@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 flask = "==3.0.3"
 paramiko = "*"
+flask-cors = "*"
 
 [dev-packages]
 

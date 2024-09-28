@@ -7,18 +7,14 @@ const Nav = () => {
         <li>
           <Link href="/">Home</Link>
         </li>
-        <li>
-          <Link href="/embedding">Embedding Visualization</Link>
-        </li>
+        
         <li>
           <Link href="/ngram">N-gram Timeseries</Link>
         </li>
         <li>
           <Link href="/topic">Topic Modeling</Link>
         </li>
-        <li>
-          <Link href="/customQuery">Custom Query Builder</Link>
-        </li>
+       
         <li>
           <Link href="/about"> About </Link>
         </li>
