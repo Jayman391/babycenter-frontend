@@ -23,28 +23,44 @@ def auth(username, password):
         return jsonify({"status": "error", "message": e}) 
         
 
-@app.route('/query/<content>', methods=['GET'])
-def query(content):
+@app.route('/query/<country>/<format>/<start>/<end>/<keywords>/', methods=['GET'])
+def query(country, format, start, end, keywords):
     #### PLACEHOLDER FOR QUERYING DATABASE ####
     try :
-        return jsonify({"status": "success", "message": "Query successful", "content": content})
+        return jsonify({"status": "success", "message": "Query successful", "content": {
+            "country": country,
+            "format": format,
+            "start": start,
+            "end": end,
+            "keywords": keywords
+        }})
     except Exception as e:
         return jsonify({"status": "error", "message": e}) 
         
 
-@app.route('/topic/<content>', methods=['GET'])
-def topic(content):
+@app.route('/topic/<embedding>/<dimred>/<clustering>/<vectorizer>/', methods=['GET'])
+def topic(embedding, dimred, clustering, vectorizer, ):
     #### PLACEHOLDER FOR TOPIC MODELING ####
     try :
-        return jsonify({"status": "success", "message": "Topic modeling successful", "content": content})
+        return jsonify({"status": "success", "message": "Topic modeling successful", "content": {
+            "embedding": embedding,
+            "dimred": dimred,
+            "clustering": clustering,
+            "vectorizer": vectorizer,
+        }})
     except Exception as e:
         return jsonify({"status": "error", "message": e})
     
-@app.route('/ngram/<content>', methods=['GET'])
-def ngram(content):
+@app.route('/ngram/<country>/<start>/<end>/<keywords>/', methods=['GET'])
+def ngram(country, start, end, keywords):
     #### PLACEHOLDER FOR VISUALIZATION ####
     try :
-        return jsonify({"status": "success", "message": "Visualization successful", "content": content})
+        return jsonify({"status": "success", "message": "Visualization successful", "content": {
+            "country": country,
+            "start": start,
+            "end": end,
+            "keywords": keywords
+        }})
     except Exception as e:
         return jsonify({"status": "error", "message": e})
     
