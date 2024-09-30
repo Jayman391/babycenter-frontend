@@ -1,7 +1,8 @@
 import React from 'react';
 import Query from '../query';
+import { BACKEND_IP } from '../config';
 
-const NgramPage = () => {
+export default function NgramPage() {
   return (
     <div>
       <h1>N Gram Visualization Page</h1>
@@ -15,4 +16,3 @@ const NgramPage = () => {
   );
 };
 
-export default NgramPage;

@@ -1,6 +1,4 @@
-// app/query.tsx
-
-"use client"; // Ensure this is the first line
+"use client"; 
 
 import React, { useState, useEffect } from 'react';
 import { BACKEND_IP } from './config'; // Import from config.ts
@@ -45,8 +43,7 @@ export default function Query() {
 
   return (
     <div>
-      <h1>Query</h1>
-
+    
       <form onSubmit={handleSubmit}>
         <label>
           Query:
@@ -55,6 +52,7 @@ export default function Query() {
             name="query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            style={{ color: 'black' }} // Set the input font color to black
           />
         </label>
         <input type="submit" value="Submit" />

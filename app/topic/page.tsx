@@ -1,7 +1,9 @@
 import React from 'react';
 import Query from '../query';
+import { BACKEND_IP } from '../config';
 
-const TopicPage = () => {
+export default function TopicPage(){
+
   return (
     <div>
       <h1>Topic Modeling Page </h1>
@@ -14,5 +16,3 @@ const TopicPage = () => {
     </div>
   );
 };
-
-export default TopicPage;

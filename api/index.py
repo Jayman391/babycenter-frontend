@@ -19,8 +19,9 @@ def auth(username, password):
     try :
         ssh.connect('vacc-user1.uvm.edu', username=username, password=password)
         return jsonify({"status": "success", "message": "Authentication successful"})
-    except paramiko.AuthenticationException:
-        return jsonify({"status": "error", "message": "Authentication failed"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": e}) 
+        
 
 @app.route('/query/<content>', methods=['GET'])
 def query(content):
@@ -29,3 +30,21 @@ def query(content):
         return jsonify({"status": "success", "message": "Query successful", "content": content})
     except Exception as e:
         return jsonify({"status": "error", "message": e}) 
+        
+
+@app.route('/topic/<content>', methods=['GET'])
+def topic(content):
+    #### PLACEHOLDER FOR TOPIC MODELING ####
+    try :
+        return jsonify({"status": "success", "message": "Topic modeling successful", "content": content})
+    except Exception as e:
+        return jsonify({"status": "error", "message": e})
+    
+@app.route('/ngram/<content>', methods=['GET'])
+def ngram(content):
+    #### PLACEHOLDER FOR VISUALIZATION ####
+    try :
+        return jsonify({"status": "success", "message": "Visualization successful", "content": content})
+    except Exception as e:
+        return jsonify({"status": "error", "message": e})
+    

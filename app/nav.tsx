@@ -7,9 +7,11 @@ const Nav = () => {
         <li>
           <Link href="/">Home</Link>
         </li>
-        
         <li>
-          <Link href="/ngram">N-gram Timeseries</Link>
+          <Link href="/query">Custom Query</Link>  
+        </li> 
+        <li>
+          <Link href="/ngram">N-gram Visualization</Link>
         </li>
         <li>
           <Link href="/topic">Topic Modeling</Link>
