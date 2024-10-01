@@ -1,4 +1,7 @@
+"use client";  // Mark this component as a client component
+
 import { useEffect, useState } from "react";
+import { BACKEND_IP } from './config'; // Ensure the path is correct
 
 export default function Auth() {
   const [isAuthed, setIsAuthed] = useState(false);
@@ -11,14 +14,15 @@ export default function Auth() {
           const username = prompt("Enter username:");
           const password = prompt("Enter password:");
           
-          const authResponse = await fetch(`http://127.0.0.1:5328/auth/${username}/${password}`);
-          const authResult = await authResponse.json();
+          if (username && password) {
+            const authResponse = await fetch(`${BACKEND_IP}/auth/${encodeURIComponent(username)}/${encodeURIComponent(password)}`);
+            const authResult = await authResponse.json();
 
-          if (authResult.status === "error") {
-            setLoading(false);  // Stop loading
-            window.close(); // Close the window
-          } else {
-            setIsAuthed(true); // User is authenticated
+            if (authResult.status === "error") {
+              setLoading(false);  // Stop loading
+            } else {
+              setIsAuthed(true); // User is authenticated
+            }
           }
         } catch (error) {
           console.error("Authentication failed:", error);
@@ -40,4 +44,4 @@ export default function Auth() {
   ) : (
     <div>Not authenticated</div> // Fallback message if authentication fails
   );
-};
+}
