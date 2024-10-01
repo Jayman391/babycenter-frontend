@@ -17,11 +17,11 @@ interface TopicResponse {
 }
 
 export default function TopicPage() {
-  // State variables for form inputs
-  const [embedding, setEmbedding] = useState<string>('');
-  const [dimred, setDimred] = useState<string>('');
-  const [clustering, setClustering] = useState<string>('');
-  const [vectorizer, setVectorizer] = useState<string>('');
+  // Initialize state variables with default values
+  const [embedding, setEmbedding] = useState<string>('word2vec');
+  const [dimred, setDimred] = useState<string>('pca');
+  const [clustering, setClustering] = useState<string>('kmeans');
+  const [vectorizer, setVectorizer] = useState<string>('tfidf');
   const [finetune, setFinetune] = useState<string>('');
 
   // State variables for handling responses and loading state
@@ -37,11 +37,7 @@ export default function TopicPage() {
     setResponse(null);
 
     // Construct the URL with path parameters
-    const url = `${BACKEND_IP}/topic/${encodeURIComponent(
-      embedding
-    )}/${encodeURIComponent(dimred)}/${encodeURIComponent(
-      clustering
-    )}/${encodeURIComponent(vectorizer)}/${encodeURIComponent(finetune)}/`;
+    const url = `${BACKEND_IP}/topic/${encodeURIComponent(embedding)}/${encodeURIComponent(dimred)}/${encodeURIComponent(clustering)}/${encodeURIComponent(vectorizer)}/`;
 
     try {
       const res = await fetch(url, { method: 'GET' });
@@ -69,18 +65,16 @@ export default function TopicPage() {
         <div>
           <label htmlFor="embedding">Embedding:</label>
           <select
-      
             id="embedding"
             name="embedding"
             value={embedding}
             onChange={(e) => setEmbedding(e.target.value)}
             required
-            placeholder="Enter embedding type"
             style={{ color: 'black' }}
           >
-            <option value="model1">Word2Vec</option>
-            <option value="model2">FastText</option>
-            <option value="model3">GloVe</option>
+            <option value="word2vec">Word2Vec</option>
+            <option value="fasttext">FastText</option>
+            <option value="glove">GloVe</option>
           </select>
         </div>
 
@@ -93,7 +87,6 @@ export default function TopicPage() {
             value={dimred}
             onChange={(e) => setDimred(e.target.value)}
             required
-            placeholder="e.g., PCA, t-SNE"
             style={{ color: 'black' }}
           >
             <option value="pca">PCA</option>
@@ -110,7 +103,6 @@ export default function TopicPage() {
             value={clustering}
             onChange={(e) => setClustering(e.target.value)}
             required
-            placeholder="e.g., KMeans, DBSCAN"
             style={{ color: 'black' }}
           >
             <option value="kmeans">KMeans</option>
@@ -127,13 +119,12 @@ export default function TopicPage() {
             value={vectorizer}
             onChange={(e) => setVectorizer(e.target.value)}
             required
-            placeholder="e.g., TF-IDF, CountVectorizer"
             style={{ color: 'black' }}
           >
             <option value="tfidf">TF-IDF</option>
             <option value="count">CountVectorizer</option>
           </select>
-        </div> 
+        </div>
 
         {/* Submit Button */}
         <div>
