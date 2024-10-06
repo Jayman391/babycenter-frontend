@@ -1,9 +1,9 @@
 {
-  "name": "next-flask",
-  "version": "0.1.0",
+  "name": "babycenter-web-interface",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "flask-dev": "FLASK_DEBUG=1 pipenv run flask --app api/index run -p 5328",
+    "flask-dev": "FLASK_DEBUG=1 pipenv run flask --app babycenter-backend/index run -p 5328",
     "next-dev": "next dev",
     "dev": "concurrently \"pnpm run next-dev\" \"pnpm run flask-dev\"",
     "build": "next build",
