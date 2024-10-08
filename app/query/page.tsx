@@ -3,69 +3,74 @@
 import React, { useState } from 'react';
 import { BACKEND_IP } from '../config'; // Ensure the path is correct
 
-// Define the shape of the response from the backend
-interface QueryResponse {
-  status: string;
-  message: string;
-  content: {
-    language: string;
-    format: string;
-    start: string;
-    end: string;
-    keywords: string[];
-  } | null;
-}
 
 export default function QueryPage() {
-  // State variables for form inputs
-  const [country, setCountry] = useState<string>('');
-  const [format, setFormat] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState<string>('');
+  // State variables for form inputs with default values
+  const [country, setCountry] = useState<string>('USA');
+  const [startDate, setStartDate] = useState<string>('2010-01-01');
+  const [endDate, setEndDate] = useState<string>('2024-03-01');
+  const [keywords, setKeywords] = useState<string[]>(['all']);
+  const [groups, setGroups] = useState<string[]>(['all']);
+  const [keywordInput, setKeywordInput] = useState<string>(''); // no default input
+  const [groupInput, setGroupInput] = useState<string>(''); // no default input
+  const [numComments, setNumComments] = useState<number>(5);
+  const [postOrComment, setPostOrComment] = useState<string>('posts');
+  const [numDocuments, setNumDocuments] = useState<number>(50);
 
   // State variables for handling responses and loading state
-  const [response, setResponse] = useState<QueryResponse | null>(null);
+  const [response, setResponse] = useState<Response | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Handle form submission
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    setResponse(null);
+ // Handle form submission
+const handleSubmit = async (event: React.FormEvent) => {
+  event.preventDefault();
+  setIsLoading(true);
+  setError(null);
+  setResponse(null);
 
-    // Encode keywords as comma-separated values
-    const encodedKeywords = keywords.map(keyword => encodeURIComponent(keyword)).join(',');
+  // Ensure keywords and groups have default values if empty
+  const finalKeywords = keywords.length > 0 ? keywords : [''];
+  const finalGroups = groups.length > 0 ? groups : [''];
 
-    // Construct the URL with path parameters
-    const url = `${BACKEND_IP}/query/${encodeURIComponent(country)}/${encodeURIComponent(format)}/${encodeURIComponent(startDate)}/${encodeURIComponent(endDate)}/${encodedKeywords}/`;
+  // Encode keywords and groups as comma-separated values
+  const encodedKeywords = finalKeywords.map(keyword => encodeURIComponent(keyword)).join(',');
+  const encodedGroups = finalGroups.map(group => encodeURIComponent(group)).join(',');
 
-    try {
-      const res = await fetch(url, { method: 'GET' });
+  // Convert start and end dates to integer format (YYYYMMDD)
+  const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
+  const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
+  // Construct the URL using query parameters
+  const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&start=${startDateInt}&end=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
 
-      const data: QueryResponse = await res.json();
-      setResponse(data);
-    } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.message || 'Error fetching data. Please try again.');
-    } finally {
-      setIsLoading(false);
+  try {
+    const res = await fetch(url, { method: 'GET' });
+
+    if (!res.ok) {
+      throw new Error(`Server error: ${res.status}`);
     }
-  };
 
-  // Handle changes in the keyword input field
+    const data = await res.json();
+    setResponse(data);
+  } catch (err: any) {
+    console.error('Error fetching data:', err);
+    setError(err.message || 'Error fetching data. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  // Handle changes in the keyword and group input fields
   const handleKeywordChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     setKeywordInput(event.target.value);
   };
+  const handleGroupChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setGroupInput(event.target.value);
+  };
 
-  // Handle adding a keyword to the list
+  // Handle adding a keyword or group to the list
   const handleKeywordAdd = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedKeyword = keywordInput.trim();
@@ -74,57 +79,45 @@ export default function QueryPage() {
       setKeywordInput('');
     }
   };
+  const handleGroupAdd = (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmedGroup = groupInput.trim();
+    if (trimmedGroup !== '') {
+      setGroups(prevGroups => [...prevGroups, trimmedGroup]);
+      setGroupInput('');
+    }
+  };
 
-  // Handle removing a keyword from the list
+  // Handle removing a keyword or group from the list
   const handleKeywordRemove = (index: number) => {
     setKeywords(prevKeywords => prevKeywords.filter((_, i) => i !== index));
+  };
+  const handleGroupRemove = (index: number) => {
+    setGroups(prevGroups => prevGroups.filter((_, i) => i !== index));
   };
 
   return (
     <div>
       <h1>Query Page</h1>
 
-
       <form onSubmit={handleSubmit}>
-        {/* Language Selection */}
+        {/* Country Selection */}
         <div>
-          <label htmlFor="country">Country:</label>
-          <select
+          <label htmlFor="country">Select Country:</label>
+          <input
             id="country"
-            name="country"
+            type="text"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             required
-            style={{ color: 'black' }}
-          >
-            <option value="">Select a language</option>
-            <option value="English">English</option>
-            <option value="Spanish">Spanish</option>
-            {/* Add more languages as needed */}
-          </select>
-        </div>
-
-        {/* Format Selection */}
-        <div>
-          <label htmlFor="format">Format:</label>
-          <select
-            id="format"
-            name="format"
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            required
-            style={{ color: 'black' }}
-          >
-            <option value="">Select a format</option>
-            <option value="PDF">PDF</option>
-            <option value="DOCX">DOCX</option>
-            {/* Add more formats as needed */}
-          </select>
+            style={{ color: 'black' }} 
+            placeholder='USA'
+          />
         </div>
 
         {/* Start Date */}
         <div>
-          <label htmlFor="startDate">Start Date:</label>
+          <label htmlFor="startDate">Select Start Date:</label>
           <input
             type="date"
             id="startDate"
@@ -132,13 +125,13 @@ export default function QueryPage() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             required
-            style={{ color: 'black' }}
+            style={{ color: 'black' }} 
           />
         </div>
 
         {/* End Date */}
         <div>
-          <label htmlFor="endDate">End Date:</label>
+          <label htmlFor="endDate">Select End Date:</label>
           <input
             type="date"
             id="endDate"
@@ -146,40 +139,87 @@ export default function QueryPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             required
-            style={{ color: 'black' }}
+            style={{ color: 'black' }} 
           />
         </div>
 
         {/* Keywords Input */}
         <div>
-          <label htmlFor="keywords"></label>
+          <label htmlFor="keywords">Add N-Grams or leave blank for default:</label>
           <textarea
             id="keywords"
-            name="keywords"
             value={keywordInput}
             onChange={handleKeywordChange}
             placeholder="Enter a keyword"
-            rows={3}
-            style={{ color: 'black' }}
+            rows={2}
+            style={{ color: 'black' }} 
           />
-          <button type="button" onClick={handleKeywordAdd}>
-            Add Keyword
-          </button>
+          <button type="button" onClick={handleKeywordAdd}>Add N-Gram</button>
+        </div>
+        <ul>
+          {keywords.map((keyword, index) => (
+            <li key={index}>{keyword} <button type="button" onClick={() => handleKeywordRemove(index)}>Remove</button></li>
+          ))}
+        </ul>
+
+        {/* Groups Input */}
+        <div>
+          <label htmlFor="groups"> Add Groups or leave blank for all:</label>
+          <textarea
+            id="groups"
+            value={groupInput}
+            onChange={handleGroupChange}
+            placeholder="Enter a group"
+            rows={2}
+            style={{ color: 'black' }} 
+          />
+          <button type="button" onClick={handleGroupAdd}>Add Group</button>
+        </div>
+        <ul>
+          {groups.map((group, index) => (
+            <li key={index}>{group} <button type="button" onClick={() => handleGroupRemove(index)}>Remove</button></li>
+          ))}
+        </ul>
+
+        {/* Number of Comments */}
+        <div>
+          <label htmlFor="numComments">Select Number of Comments per Post if applicable:</label>
+          <input
+            type="number"
+            id="numComments"
+            name="numComments"
+            value={numComments}
+            onChange={(e) => setNumComments(parseInt(e.target.value))}
+            style={{ color: 'black' }} 
+          />
         </div>
 
-        {/* Display Added Keywords */}
-        {keywords.length > 0 && (
-          <ul>
-            {keywords.map((keyword, index) => (
-              <li key={index}>
-                {keyword}{' '}
-                <button type="button" onClick={() => handleKeywordRemove(index)}>
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Post or Comment */}
+        <div>
+          <label htmlFor="postOrComment">Just Posts or Comments?</label>
+          <select
+            id="postOrComment"
+            value={postOrComment}
+            onChange={(e) => setPostOrComment(e.target.value)}
+            style={{ color: 'black' }} 
+          >
+             <option value="post">posts</option>
+            <option value="comment">comments</option>
+          </select>
+        </div>
+
+        {/* Number of Documents */}
+        <div>
+          <label htmlFor="numDocuments">Select Number of Documents:</label>
+          <input
+            type="number"
+            id="numDocuments"
+            name="numDocuments"
+            value={numDocuments}
+            onChange={(e) => setNumDocuments(parseInt(e.target.value))}
+            style={{ color: 'black' }} 
+          />
+        </div>
 
         {/* Submit Button */}
         <div>
@@ -194,18 +234,10 @@ export default function QueryPage() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       {/* Display Response */}
-      {response && response.status === 'success' && response.content && (
+      {response && (
         <div>
           <h2>Response from Server:</h2>
           <pre>{JSON.stringify(response, null, 2)}</pre>
-        </div>
-      )}
-
-      {/* Display Error Message from Server */}
-      {response && response.status === 'error' && (
-        <div>
-          <h2>Error from Server:</h2>
-          <p style={{ color: 'red' }}>{response.message}</p>
         </div>
       )}
     </div>
