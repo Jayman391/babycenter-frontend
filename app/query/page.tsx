@@ -3,18 +3,17 @@
 import React, { useState } from 'react';
 import { BACKEND_IP } from '../config'; // Ensure the path is correct
 
-
 export default function QueryPage() {
   // State variables for form inputs with default values
   const [country, setCountry] = useState<string>('USA');
   const [startDate, setStartDate] = useState<string>('2010-01-01');
   const [endDate, setEndDate] = useState<string>('2024-03-01');
-  const [keywords, setKeywords] = useState<string[]>(['all']);
-  const [groups, setGroups] = useState<string[]>(['all']);
-  const [keywordInput, setKeywordInput] = useState<string>(''); // no default input
-  const [groupInput, setGroupInput] = useState<string>(''); // no default input
-  const [numComments, setNumComments] = useState<number>(5);
-  const [postOrComment, setPostOrComment] = useState<string>('posts');
+  const [keywords, setKeywords] = useState<string[]>([]); // Empty initially
+  const [groups, setGroups] = useState<string[]>([]); // Empty initially
+  const [keywordInput, setKeywordInput] = useState<string>(''); // No default input
+  const [groupInput, setGroupInput] = useState<string>(''); // No default input
+  const [numComments, setNumComments] = useState<number>(-1); // -1 indicates no specific input
+  const [postOrComment, setPostOrComment] = useState<string>('posts'); // Default to "posts"
   const [numDocuments, setNumDocuments] = useState<number>(50);
 
   // State variables for handling responses and loading state
@@ -23,44 +22,43 @@ export default function QueryPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Handle form submission
- // Handle form submission
-const handleSubmit = async (event: React.FormEvent) => {
-  event.preventDefault();
-  setIsLoading(true);
-  setError(null);
-  setResponse(null);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setResponse(null);
 
-  // Ensure keywords and groups have default values if empty
-  const finalKeywords = keywords.length > 0 ? keywords : [''];
-  const finalGroups = groups.length > 0 ? groups : [''];
+    // Ensure keywords and groups have default values if empty
+    const finalKeywords = keywords.length > 0 ? keywords : ['all']; // Set 'all' if no user input
+    const finalGroups = groups.length > 0 ? groups : ['all']; // Set 'all' if no user input
 
-  // Encode keywords and groups as comma-separated values
-  const encodedKeywords = finalKeywords.map(keyword => encodeURIComponent(keyword)).join(',');
-  const encodedGroups = finalGroups.map(group => encodeURIComponent(group)).join(',');
+    // Encode keywords and groups as comma-separated values
+    const encodedKeywords = finalKeywords.map(keyword => encodeURIComponent(keyword)).join(',');
+    const encodedGroups = finalGroups.map(group => encodeURIComponent(group)).join(',');
 
-  // Convert start and end dates to integer format (YYYYMMDD)
-  const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
-  const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
+    // Convert start and end dates to integer format (YYYYMMDD)
+    const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
+    const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-  // Construct the URL using query parameters
-  const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&start=${startDateInt}&end=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
+    // Construct the URL using query parameters
+    const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&start=${startDateInt}&end=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
 
-  try {
-    const res = await fetch(url, { method: 'GET' });
+    try {
+      const res = await fetch(url, { method: 'GET' });
 
-    if (!res.ok) {
-      throw new Error(`Server error: ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setResponse(data);
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      setError(err.message || 'Error fetching data. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await res.json();
-    setResponse(data);
-  } catch (err: any) {
-    console.error('Error fetching data:', err);
-    setError(err.message || 'Error fetching data. Please try again.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   // Handle changes in the keyword and group input fields
   const handleKeywordChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -203,8 +201,8 @@ const handleSubmit = async (event: React.FormEvent) => {
             onChange={(e) => setPostOrComment(e.target.value)}
             style={{ color: 'black' }} 
           >
-             <option value="post">posts</option>
-            <option value="comment">comments</option>
+            <option value="posts">posts</option>
+            <option value="comments">comments</option>
           </select>
         </div>
 
