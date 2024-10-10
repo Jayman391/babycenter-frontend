@@ -1,30 +1,32 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import { BACKEND_IP } from '../config';
-
-// Define the shape of the response from the backend
-interface NgramResponse {
-  status: string;
-  message: string;
-  content: {
-    country: string;
-    start: string;
-    end: string;
-    keywords: string[];
-  } | null;
-}
 
 export default function NgramPage() {
   // State variables for form inputs
-  const [country, setCountry] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('2010-01-01');
+  const [endDate, setEndDate] = useState<string>('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState<string>('');
 
+  const router = useRouter(); // Get access to the router
+  const [userId, setUserId] = useState<string | null>(null); // State to store the user ID
+
+  // Use useEffect to extract user_id from the URL once the component is mounted
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search); // Get query parameters from the URL
+      const userIdFromQuery = params.get('user_id');
+      if (userIdFromQuery) {
+        setUserId(userIdFromQuery); // Set the user ID
+      }
+    }
+  }, []); // Run only on component mount
+
   // State variables for handling responses and loading state
-  const [response, setResponse] = useState<NgramResponse | null>(null);
+  const [response, setResponse] = useState<any | null>(null); // Flexible response handling
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,11 +37,18 @@ export default function NgramPage() {
     setError(null);
     setResponse(null);
 
-    // Encode keywords as comma-separated values
-    const encodedKeywords = keywords.map(keyword => encodeURIComponent(keyword)).join(',');
+    // Ensure keywords have default values if empty
+    const finalKeywords = keywords.length > 0 ? keywords : ['all'];
 
-    // Construct the URL with path parameters
-    const url = `${BACKEND_IP}/ngram/${encodeURIComponent(country)}/${encodeURIComponent(startDate)}/${encodeURIComponent(endDate)}/${encodedKeywords}/`;
+    // Encode keywords as comma-separated values
+    const encodedKeywords = finalKeywords.map(keyword => encodeURIComponent(keyword)).join(',');
+
+    // Convert start and end dates to integer format (YYYYMMDD)
+    const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
+    const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
+
+    // Construct the URL using query parameters
+    const url = `${BACKEND_IP}/ngram?user_id=${userId}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
 
     try {
       const res = await fetch(url, { method: 'GET' });
@@ -48,7 +57,7 @@ export default function NgramPage() {
         throw new Error(`Server error: ${res.status}`);
       }
 
-      const data: NgramResponse = await res.json();
+      const data = await res.json();
       setResponse(data);
     } catch (err: any) {
       console.error('Error fetching data:', err);
@@ -82,24 +91,6 @@ export default function NgramPage() {
     <div>
       <h1>N-Gram Visualization Page</h1>
       <form onSubmit={handleSubmit}>
-        {/* Country Selection */}
-        <div>
-          <label htmlFor="country">Country:</label>
-          <select
-            id="country"
-            name="country"
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            required
-            style={{ color: 'black' }}
-          >
-            <option value="">Select a country</option>
-            <option value="USA">USA</option>
-            <option value="Brazil">Brazil</option>
-            {/* Add more countries as needed */}
-          </select>
-        </div>
-
         {/* Start Date */}
         <div>
           <label htmlFor="startDate">Start Date:</label>
@@ -130,7 +121,7 @@ export default function NgramPage() {
 
         {/* Keywords Input */}
         <div>
-          <label htmlFor="keywords"></label>
+          <label htmlFor="keywords">Add Keywords:</label>
           <textarea
             id="keywords"
             name="keywords"
@@ -138,7 +129,6 @@ export default function NgramPage() {
             onChange={handleKeywordChange}
             placeholder="Enter a keyword"
             rows={3}
-            required
             style={{ color: 'black' }}
           />
           <button type="button" onClick={handleKeywordAdd}>
@@ -173,18 +163,10 @@ export default function NgramPage() {
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
       {/* Display Response */}
-      {response && response.status === 'success' && response.content && (
+      {response && (
         <div>
           <h2>Response from Server:</h2>
           <pre>{JSON.stringify(response, null, 2)}</pre>
-        </div>
-      )}
-
-      {/* Display Error Message from Server */}
-      {response && response.status === 'error' && (
-        <div>
-          <h2>Error from Server:</h2>
-          <p style={{ color: 'red' }}>{response.message}</p>
         </div>
       )}
     </div>

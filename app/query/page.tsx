@@ -17,7 +17,8 @@ export default function QueryPage() {
   const [numDocuments, setNumDocuments] = useState<number>(50);
 
   // State variables for handling responses and loading state
-  const [response, setResponse] = useState<Response | null>(null);
+  const [response, setResponse] = useState<any | null>(null); // Allow `response` to handle any data type
+  const [userId, setUserId] = useState<string | null>(null); // Store user ID
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +42,7 @@ export default function QueryPage() {
     const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
     // Construct the URL using query parameters
-    const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&start=${startDateInt}&end=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
+    const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
 
     try {
       const res = await fetch(url, { method: 'GET' });
@@ -51,7 +52,8 @@ export default function QueryPage() {
       }
 
       const data = await res.json();
-      setResponse(data);
+      setResponse(data.response); // Store the response
+      setUserId(data.user); // Store the user ID from the response
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Error fetching data. Please try again.');
@@ -225,17 +227,22 @@ export default function QueryPage() {
         </div>
       </form>
 
-      {/* Loading Indicator */}
-      {isLoading && <p>Loading...</p>}
-
-      {/* Error Message */}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {/* Display Response */}
-      {response && (
+      
+      {/* After Submit, display hyperlinks to ngram and topic pages */}
+      
+      {/* After Submit, display hyperlinks to ngram and topic pages */}
+      {response && userId && (
         <div>
-          <h2>Response from Server:</h2>
-          <pre>{JSON.stringify(response, null, 2)}</pre>
+          <h2>Query Results</h2>
+          <p>Choose an Analysis to Conduct</p>
+          <ul>
+            <li>
+              <a href={`/ngram?user_id=${userId}`}>N-Gram Visualization</a>
+            </li>
+            <li>
+              <a href={`/topic?user_id=${userId}`}>Topic Modeling</a>
+            </li>
+          </ul>
         </div>
       )}
     </div>
