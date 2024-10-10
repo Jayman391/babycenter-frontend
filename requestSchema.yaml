@@ -34,7 +34,7 @@ paths:
           schema:
             type: string
             format: date
-        - name: "keyword list"
+        - name: "keywords"
           in: query
           description: The list of keywords to query
           required: true
@@ -42,7 +42,7 @@ paths:
             type: array
             items:
               type: string
-        - name: "group list"
+        - name: "groups"
           in: query
           description: The list of groups to query
           required: true
@@ -50,28 +50,27 @@ paths:
             type: array
             items:
               type: string
-        - name: "num comments"
+        - name: "numComments"
           in: query
           description: The number of comments to query
           required: false
           schema:
             type: integer
             format: int32
-        - name: "post or comment"
+        - name: "postOrComment"
           in: query
-          description: The type of document to query, either 'post' or 'comment'
+          description: The type of document to query, either 'posts' or 'comments'
           required: true
           schema:
             type: string
-            enum: [post, comment]
-        - name: "num documents"
+            enum: [posts, comments]
+        - name: "numDocuments"
           in: query
           description: The number of documents to return
           required: true
           schema:
             type: integer
             format: int32
-
       responses:
         '200':
           description: A list of relevant posts or comments

@@ -1,0 +1,1 @@
+npx @openapitools/openapi-generator-cli generate -i requestSchema.yaml -g ruby -o babycenter-frontend
