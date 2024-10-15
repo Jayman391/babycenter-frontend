@@ -8,17 +8,17 @@ export default function QueryPage() {
   const [country, setCountry] = useState<string>('USA');
   const [startDate, setStartDate] = useState<string>('2010-01-01');
   const [endDate, setEndDate] = useState<string>('2024-03-01');
-  const [keywords, setKeywords] = useState<string[]>([]); // Empty initially
-  const [groups, setGroups] = useState<string[]>([]); // Empty initially
-  const [keywordInput, setKeywordInput] = useState<string>(''); // No default input
-  const [groupInput, setGroupInput] = useState<string>(''); // No default input
-  const [numComments, setNumComments] = useState<number>(-1); // -1 indicates no specific input
-  const [postOrComment, setPostOrComment] = useState<string>('posts'); // Default to "posts"
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState<string>('');
+  const [groupInput, setGroupInput] = useState<string>('');
+  const [numComments, setNumComments] = useState<number>(-1);
+  const [postOrComment, setPostOrComment] = useState<string>('posts');
   const [numDocuments, setNumDocuments] = useState<number>(50);
 
   // State variables for handling responses and loading state
-  const [response, setResponse] = useState<any | null>(null); // Allow `response` to handle any data type
-  const [userId, setUserId] = useState<string | null>(null); // Store user ID
+  const [response, setResponse] = useState<any | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,19 +29,15 @@ export default function QueryPage() {
     setError(null);
     setResponse(null);
 
-    // Ensure keywords and groups have default values if empty
-    const finalKeywords = keywords.length > 0 ? keywords : ['all']; // Set 'all' if no user input
-    const finalGroups = groups.length > 0 ? groups : ['all']; // Set 'all' if no user input
+    const finalKeywords = keywords.length > 0 ? keywords : ['all'];
+    const finalGroups = groups.length > 0 ? groups : ['all'];
 
-    // Encode keywords and groups as comma-separated values
     const encodedKeywords = finalKeywords.map(keyword => encodeURIComponent(keyword)).join(',');
     const encodedGroups = finalGroups.map(group => encodeURIComponent(group)).join(',');
 
-    // Convert start and end dates to integer format (YYYYMMDD)
     const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-    // Construct the URL using query parameters
     const url = `${BACKEND_IP}/query?country=${encodeURIComponent(country)}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
 
     try {
@@ -52,11 +48,56 @@ export default function QueryPage() {
       }
 
       const data = await res.json();
-      setResponse(data.response); // Store the response
-      setUserId(data.user); // Store the user ID from the response
+      setResponse(data.response);
+      setUserId(data.user);
     } catch (err: any) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Error fetching data. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Save Query Function
+  const handleSave = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const saveUrl = `${BACKEND_IP}/save`;
+
+    const saveParams = {
+      type: "query",
+      name: `${country}-${startDate}-${endDate}`, // Sample name, can be modified
+      content: {
+        "country": country,
+        "start_date": startDate,
+        "end_date": endDate,
+        "keywords": keywords,
+        "groups": groups,
+        "num_comments": numComments,
+        "post_or_comment": postOrComment,
+        "num_documents": numDocuments
+      }
+    };
+
+    try {
+      const res = await fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(saveParams),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      alert('Query saved successfully');
+    } catch (err: any) {
+      console.error('Error saving query:', err);
+      setError(err.message || 'Error saving query. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -110,8 +151,8 @@ export default function QueryPage() {
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             required
-            style={{ color: 'black' }} 
-            placeholder='USA'
+            style={{ color: 'black' }}
+            placeholder="USA"
           />
         </div>
 
@@ -125,7 +166,7 @@ export default function QueryPage() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             required
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
         </div>
 
@@ -139,7 +180,7 @@ export default function QueryPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             required
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
         </div>
 
@@ -152,32 +193,36 @@ export default function QueryPage() {
             onChange={handleKeywordChange}
             placeholder="Enter a keyword"
             rows={2}
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
           <button type="button" onClick={handleKeywordAdd}>Add N-Gram</button>
         </div>
         <ul>
           {keywords.map((keyword, index) => (
-            <li key={index}>{keyword} <button type="button" onClick={() => handleKeywordRemove(index)}>Remove</button></li>
+            <li key={index}>
+              {keyword} <button type="button" onClick={() => handleKeywordRemove(index)}>Remove</button>
+            </li>
           ))}
         </ul>
 
         {/* Groups Input */}
         <div>
-          <label htmlFor="groups"> Add Groups or leave blank for all:</label>
+          <label htmlFor="groups">Add Groups or leave blank for all:</label>
           <textarea
             id="groups"
             value={groupInput}
             onChange={handleGroupChange}
             placeholder="Enter a group"
             rows={2}
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
           <button type="button" onClick={handleGroupAdd}>Add Group</button>
         </div>
         <ul>
           {groups.map((group, index) => (
-            <li key={index}>{group} <button type="button" onClick={() => handleGroupRemove(index)}>Remove</button></li>
+            <li key={index}>
+              {group} <button type="button" onClick={() => handleGroupRemove(index)}>Remove</button>
+            </li>
           ))}
         </ul>
 
@@ -190,7 +235,7 @@ export default function QueryPage() {
             name="numComments"
             value={numComments}
             onChange={(e) => setNumComments(parseInt(e.target.value))}
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
         </div>
 
@@ -201,7 +246,7 @@ export default function QueryPage() {
             id="postOrComment"
             value={postOrComment}
             onChange={(e) => setPostOrComment(e.target.value)}
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           >
             <option value="posts">posts</option>
             <option value="comments">comments</option>
@@ -217,8 +262,13 @@ export default function QueryPage() {
             name="numDocuments"
             value={numDocuments}
             onChange={(e) => setNumDocuments(parseInt(e.target.value))}
-            style={{ color: 'black' }} 
+            style={{ color: 'black' }}
           />
+        </div>
+
+        {/* Save Button */}
+        <div>
+          <button type="button" onClick={handleSave}>Save Query</button>
         </div>
 
         {/* Submit Button */}
@@ -227,9 +277,6 @@ export default function QueryPage() {
         </div>
       </form>
 
-      
-      {/* After Submit, display hyperlinks to ngram and topic pages */}
-      
       {/* After Submit, display hyperlinks to ngram and topic pages */}
       {response && userId && (
         <div>
@@ -245,6 +292,9 @@ export default function QueryPage() {
           </ul>
         </div>
       )}
+
+      {/* Error handling */}
+      {error && <div className="error">{error}</div>}
     </div>
   );
 }
