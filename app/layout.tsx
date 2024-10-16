@@ -2,7 +2,6 @@
 
 import type { Metadata } from "next";
 import Nav from "./nav";
-import Footer from "./footer";
 import localFont from "next/font/local";
 import "./globals.css";
 import { BACKEND_IP } from "./config"; // Import from config.ts
@@ -39,7 +38,6 @@ export default function RootLayout({
         {/* <Auth /> */}
         <Nav />
         {children}
-        <Footer />
       </body>
     </html>
   );

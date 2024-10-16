@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BACKEND_IP } from '../config'; // Ensure the path is correct
 
 export default function QueryPage() {
@@ -15,12 +15,62 @@ export default function QueryPage() {
   const [numComments, setNumComments] = useState<number>(-1);
   const [postOrComment, setPostOrComment] = useState<string>('posts');
   const [numDocuments, setNumDocuments] = useState<number>(50);
+  const [queryName, setQueryName] = useState<string>(''); // New state variable for query name
 
   // State variables for handling responses and loading state
   const [response, setResponse] = useState<any | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // New state variables for loading saved queries
+  const [savedQueries, setSavedQueries] = useState<any[]>([]);
+  const [selectedQueryName, setSelectedQueryName] = useState<string>('');
+  const [isLoadingQueries, setIsLoadingQueries] = useState<boolean>(false);
+
+  // Fetch saved queries when the component mounts
+  useEffect(() => {
+    const fetchSavedQueries = async () => {
+      setIsLoadingQueries(true);
+      setError(null);
+      try {
+        const url = `${BACKEND_IP}/load?computed_type=query&name=all`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
+        }
+        const data = await res.json();
+        setSavedQueries(data.content || []);
+      } catch (err: any) {
+        console.error('Error fetching saved queries:', err);
+        setError(err.message || 'Error fetching saved queries. Please try again.');
+      } finally {
+        setIsLoadingQueries(false);
+      }
+    };
+
+    fetchSavedQueries();
+  }, []);
+
+  // Handle selecting a saved query
+  const handleSelectSavedQuery = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const queryName = event.target.value;
+    setSelectedQueryName(queryName);
+
+    // Find the selected query in the savedQueries array
+    const selectedQuery = savedQueries.find((query) => query._id === queryName);
+    if (selectedQuery) {
+      const content = selectedQuery.content;
+      setCountry(content.country || 'USA');
+      setStartDate(content.start_date || '2010-01-01');
+      setEndDate(content.end_date || '2024-03-01');
+      setKeywords(content.keywords || []);
+      setGroups(content.groups || []);
+      setNumComments(content.num_comments !== undefined ? content.num_comments : -1);
+      setPostOrComment(content.post_or_comment || 'posts');
+      setNumDocuments(content.num_documents || 50);
+    }
+  };
 
   // Handle form submission
   const handleSubmit = async (event: React.FormEvent) => {
@@ -63,11 +113,17 @@ export default function QueryPage() {
     setIsLoading(true);
     setError(null);
 
+    if (!queryName.trim()) {
+      alert('Please enter a name for your query before saving.');
+      setIsLoading(false);
+      return;
+    }
+
     const saveUrl = `${BACKEND_IP}/save`;
 
     const saveParams = {
       type: "query",
-      name: `${country}-${startDate}-${endDate}`, // Sample name, can be modified
+      name: queryName, // Use the user-provided name
       content: {
         "country": country,
         "start_date": startDate,
@@ -95,12 +151,17 @@ export default function QueryPage() {
 
       const data = await res.json();
       alert('Query saved successfully');
+
+      // Optionally, refresh the saved queries list
+      setSavedQueries(prev => [...prev, saveParams]);
+      setQueryName(''); // Clear the query name after saving
     } catch (err: any) {
       console.error('Error saving query:', err);
       setError(err.message || 'Error saving query. Please try again.');
     } finally {
       setIsLoading(false);
     }
+    location.reload();
   };
 
   // Handle changes in the keyword and group input fields
@@ -139,8 +200,45 @@ export default function QueryPage() {
 
   return (
     <div className="query-page">
- 
+      <h1 className="page-title">Query Page</h1>
+
+      {/* Load Saved Queries Section */}
+      <div className="load-query-section">
+        <label htmlFor="savedQueries">Load Saved Query:</label>
+        {isLoadingQueries ? (
+          <p>Loading saved queries...</p>
+        ) : (
+          <select
+            id="savedQueries"
+            value={selectedQueryName}
+            onChange={handleSelectSavedQuery}
+            style={{ color: 'black' }} // Ensure the font color is black
+          >
+            <option value="" style={{ color: 'black' }}>-- Select a Saved Query --</option>
+            {savedQueries.map((query, index) => (
+              <option key={index} value={query._id} style={{ color: 'black' }}>
+                {query._id}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <form onSubmit={handleSubmit} className="query-form">
+        {/* Query Name Input */}
+        <div className="form-group">
+          <label htmlFor="queryName">Query Name:</label>
+          <input
+            type="text"
+            id="queryName"
+            value={queryName}
+            onChange={(e) => setQueryName(e.target.value)}
+            placeholder="Enter a name for your query"
+            required
+            style={{ color: 'black' }}
+          />
+        </div>
+
         {/* Country Selection */}
         <div className="form-group">
           <label htmlFor="country">Select Country:</label>
@@ -195,12 +293,21 @@ export default function QueryPage() {
               rows={2}
               style={{ color: 'black' }}
             />
-            <button type="button" onClick={handleKeywordAdd} className="add-button">Add N-Gram</button>
+            <button type="button" onClick={handleKeywordAdd} className="add-button">
+              Add N-Gram
+            </button>
           </div>
           <ul className="keyword-list">
             {keywords.map((keyword, index) => (
-              <li key={index}>
-                {keyword} <button type="button" onClick={() => handleKeywordRemove(index)} className="remove-button">Remove</button>
+              <li key={index} style={{ color: 'black' }}>
+                {keyword}{' '}
+                <button
+                  type="button"
+                  onClick={() => handleKeywordRemove(index)}
+                  className="remove-button"
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>
@@ -218,12 +325,21 @@ export default function QueryPage() {
               rows={2}
               style={{ color: 'black' }}
             />
-            <button type="button" onClick={handleGroupAdd} className="add-button">Add Group</button>
+            <button type="button" onClick={handleGroupAdd} className="add-button">
+              Add Group
+            </button>
           </div>
           <ul className="group-list">
             {groups.map((group, index) => (
-              <li key={index}>
-                {group} <button type="button" onClick={() => handleGroupRemove(index)} className="remove-button">Remove</button>
+              <li key={index} style={{ color: 'black' }}>
+                {group}{' '}
+                <button
+                  type="button"
+                  onClick={() => handleGroupRemove(index)}
+                  className="remove-button"
+                >
+                  Remove
+                </button>
               </li>
             ))}
           </ul>
@@ -251,8 +367,8 @@ export default function QueryPage() {
             onChange={(e) => setPostOrComment(e.target.value)}
             style={{ color: 'black' }}
           >
-            <option value="posts">Posts</option>
-            <option value="comments">Comments</option>
+            <option value="posts" style={{ color: 'black' }}>Posts</option>
+            <option value="comments" style={{ color: 'black' }}>Comments</option>
           </select>
         </div>
 
@@ -271,16 +387,17 @@ export default function QueryPage() {
 
         {/* Save and Submit Buttons */}
         <div className="form-group buttons">
-          <button type="button" onClick={handleSave} className="save-button">Save Query</button>
+          <button type="button" onClick={handleSave} className="save-button">
+            Save Query
+          </button>
           <input type="submit" value="Submit" className="submit-button" />
         </div>
       </form>
 
       {/* After Submit, display hyperlinks to ngram and topic pages */}
       {response && userId && (
-        <div className="results">
-          <h2>Query Results</h2>
-          <p>Choose an Analysis to Conduct</p>
+        <div className="results"> 
+          <p>Choose an Analysis to Conduct </p>
           <ul>
             <li>
               <a href={`/ngram?user_id=${userId}`}>N-Gram Visualization</a>
@@ -309,6 +426,29 @@ export default function QueryPage() {
           margin-bottom: 20px;
         }
 
+        .load-query-section {
+          margin-bottom: 20px;
+        }
+
+        .load-query-section label {
+          font-weight: bold;
+          margin-right: 10px;
+          color: #555;
+        }
+
+        .load-query-section select {
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 3px;
+          width: 100%;
+          box-sizing: border-box;
+          color: black; /* Set the font color to black */
+        }
+
+        .load-query-section select option {
+          color: black; /* Ensure all options have black text */
+        }
+
         .query-form {
           background-color: #f9f9f9;
           padding: 20px;
@@ -326,9 +466,9 @@ export default function QueryPage() {
           color: #555;
         }
 
-        .form-group input[type="text"],
-        .form-group input[type="date"],
-        .form-group input[type="number"],
+        .form-group input[type='text'],
+        .form-group input[type='date'],
+        .form-group input[type='number'],
         .form-group select,
         .form-group textarea {
           width: 100%;
@@ -377,6 +517,7 @@ export default function QueryPage() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+          color: black; /* Set the font color to black */
         }
 
         .remove-button {
