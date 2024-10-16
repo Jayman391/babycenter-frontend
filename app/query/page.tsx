@@ -138,12 +138,11 @@ export default function QueryPage() {
   };
 
   return (
-    <div>
-      <h1>Query Page</h1>
-
-      <form onSubmit={handleSubmit}>
+    <div className="query-page">
+ 
+      <form onSubmit={handleSubmit} className="query-form">
         {/* Country Selection */}
-        <div>
+        <div className="form-group">
           <label htmlFor="country">Select Country:</label>
           <input
             id="country"
@@ -157,7 +156,7 @@ export default function QueryPage() {
         </div>
 
         {/* Start Date */}
-        <div>
+        <div className="form-group">
           <label htmlFor="startDate">Select Start Date:</label>
           <input
             type="date"
@@ -165,13 +164,13 @@ export default function QueryPage() {
             name="startDate"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            required
             style={{ color: 'black' }}
+            required
           />
         </div>
 
         {/* End Date */}
-        <div>
+        <div className="form-group">
           <label htmlFor="endDate">Select End Date:</label>
           <input
             type="date"
@@ -185,49 +184,53 @@ export default function QueryPage() {
         </div>
 
         {/* Keywords Input */}
-        <div>
+        <div className="form-group">
           <label htmlFor="keywords">Add N-Grams or leave blank for default:</label>
-          <textarea
-            id="keywords"
-            value={keywordInput}
-            onChange={handleKeywordChange}
-            placeholder="Enter a keyword"
-            rows={2}
-            style={{ color: 'black' }}
-          />
-          <button type="button" onClick={handleKeywordAdd}>Add N-Gram</button>
+          <div className="input-button-group">
+            <textarea
+              id="keywords"
+              value={keywordInput}
+              onChange={handleKeywordChange}
+              placeholder="Enter a keyword"
+              rows={2}
+              style={{ color: 'black' }}
+            />
+            <button type="button" onClick={handleKeywordAdd} className="add-button">Add N-Gram</button>
+          </div>
+          <ul className="keyword-list">
+            {keywords.map((keyword, index) => (
+              <li key={index}>
+                {keyword} <button type="button" onClick={() => handleKeywordRemove(index)} className="remove-button">Remove</button>
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul>
-          {keywords.map((keyword, index) => (
-            <li key={index}>
-              {keyword} <button type="button" onClick={() => handleKeywordRemove(index)}>Remove</button>
-            </li>
-          ))}
-        </ul>
 
         {/* Groups Input */}
-        <div>
+        <div className="form-group">
           <label htmlFor="groups">Add Groups or leave blank for all:</label>
-          <textarea
-            id="groups"
-            value={groupInput}
-            onChange={handleGroupChange}
-            placeholder="Enter a group"
-            rows={2}
-            style={{ color: 'black' }}
-          />
-          <button type="button" onClick={handleGroupAdd}>Add Group</button>
+          <div className="input-button-group">
+            <textarea
+              id="groups"
+              value={groupInput}
+              onChange={handleGroupChange}
+              placeholder="Enter a group"
+              rows={2}
+              style={{ color: 'black' }}
+            />
+            <button type="button" onClick={handleGroupAdd} className="add-button">Add Group</button>
+          </div>
+          <ul className="group-list">
+            {groups.map((group, index) => (
+              <li key={index}>
+                {group} <button type="button" onClick={() => handleGroupRemove(index)} className="remove-button">Remove</button>
+              </li>
+            ))}
+          </ul>
         </div>
-        <ul>
-          {groups.map((group, index) => (
-            <li key={index}>
-              {group} <button type="button" onClick={() => handleGroupRemove(index)}>Remove</button>
-            </li>
-          ))}
-        </ul>
 
         {/* Number of Comments */}
-        <div>
+        <div className="form-group">
           <label htmlFor="numComments">Select Number of Comments per Post if applicable:</label>
           <input
             type="number"
@@ -240,7 +243,7 @@ export default function QueryPage() {
         </div>
 
         {/* Post or Comment */}
-        <div>
+        <div className="form-group">
           <label htmlFor="postOrComment">Just Posts or Comments?</label>
           <select
             id="postOrComment"
@@ -248,13 +251,13 @@ export default function QueryPage() {
             onChange={(e) => setPostOrComment(e.target.value)}
             style={{ color: 'black' }}
           >
-            <option value="posts">posts</option>
-            <option value="comments">comments</option>
+            <option value="posts">Posts</option>
+            <option value="comments">Comments</option>
           </select>
         </div>
 
         {/* Number of Documents */}
-        <div>
+        <div className="form-group">
           <label htmlFor="numDocuments">Select Number of Documents:</label>
           <input
             type="number"
@@ -266,20 +269,16 @@ export default function QueryPage() {
           />
         </div>
 
-        {/* Save Button */}
-        <div>
-          <button type="button" onClick={handleSave}>Save Query</button>
-        </div>
-
-        {/* Submit Button */}
-        <div>
-          <input type="submit" value="Submit" />
+        {/* Save and Submit Buttons */}
+        <div className="form-group buttons">
+          <button type="button" onClick={handleSave} className="save-button">Save Query</button>
+          <input type="submit" value="Submit" className="submit-button" />
         </div>
       </form>
 
       {/* After Submit, display hyperlinks to ngram and topic pages */}
       {response && userId && (
-        <div>
+        <div className="results">
           <h2>Query Results</h2>
           <p>Choose an Analysis to Conduct</p>
           <ul>
@@ -295,6 +294,163 @@ export default function QueryPage() {
 
       {/* Error handling */}
       {error && <div className="error">{error}</div>}
+
+      <style jsx>{`
+        .query-page {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+        }
+
+        .page-title {
+          text-align: center;
+          color: #333;
+          margin-bottom: 20px;
+        }
+
+        .query-form {
+          background-color: #f9f9f9;
+          padding: 20px;
+          border-radius: 5px;
+        }
+
+        .form-group {
+          margin-bottom: 15px;
+        }
+
+        .form-group label {
+          display: block;
+          font-weight: bold;
+          margin-bottom: 5px;
+          color: #555;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group input[type="number"],
+        .form-group select,
+        .form-group textarea {
+          width: 100%;
+          padding: 8px;
+          box-sizing: border-box;
+          border: 1px solid #ccc;
+          border-radius: 3px;
+        }
+
+        .input-button-group {
+          display: flex;
+          align-items: center;
+        }
+
+        .input-button-group textarea {
+          flex: 1;
+          margin-right: 10px;
+        }
+
+        .add-button {
+          padding: 8px 12px;
+          background-color: #28a745;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+        }
+
+        .add-button:hover {
+          background-color: #218838;
+        }
+
+        .keyword-list,
+        .group-list {
+          list-style: none;
+          padding: 0;
+          margin-top: 10px;
+        }
+
+        .keyword-list li,
+        .group-list li {
+          background-color: #e9ecef;
+          padding: 8px;
+          margin-bottom: 5px;
+          border-radius: 3px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .remove-button {
+          padding: 4px 8px;
+          background-color: #dc3545;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+        }
+
+        .remove-button:hover {
+          background-color: #c82333;
+        }
+
+        .form-group.buttons {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 20px;
+        }
+
+        .save-button,
+        .submit-button {
+          padding: 10px 15px;
+          margin-left: 10px;
+          background-color: #007bff;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+        }
+
+        .save-button:hover,
+        .submit-button:hover {
+          background-color: #0069d9;
+        }
+
+        .results {
+          margin-top: 30px;
+          text-align: center;
+        }
+
+        .results h2 {
+          color: #333;
+        }
+
+        .results p {
+          color: #555;
+        }
+
+        .results ul {
+          list-style: none;
+          padding: 0;
+        }
+
+        .results li {
+          margin-bottom: 10px;
+        }
+
+        .results a {
+          color: #007bff;
+          text-decoration: none;
+        }
+
+        .results a:hover {
+          text-decoration: underline;
+        }
+
+        .error {
+          margin-top: 20px;
+          color: #dc3545;
+          text-align: center;
+        }
+      `}</style>
     </div>
   );
 }
