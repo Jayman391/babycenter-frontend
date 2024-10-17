@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { BACKEND_IP } from '../config'; // Ensure the path is correct
+import { BACKEND_IP } from '../config'; // Adjust the import path if necessary
 import { CustomSelect } from '../CustomSelect'; // Adjust the import path accordingly
 
 export default function NgramPage() {
@@ -13,7 +13,7 @@ export default function NgramPage() {
   const [ngramName, setNgramName] = useState<string>(''); // New state variable for n-gram name
 
   // State variable for user ID
-  const [userId, setUserId] = useState<string>('0'); // Default to '0' if not found
+  const [userId, setUserId] = useState<string | null>(null);
 
   // State variables for handling responses and loading state
   const [response, setResponse] = useState<any | null>(null); // Flexible response handling
@@ -25,7 +25,18 @@ export default function NgramPage() {
   const [selectedNgramName, setSelectedNgramName] = useState<string>('');
   const [isLoadingNgrams, setIsLoadingNgrams] = useState<boolean>(false);
 
-  // Fetch saved n-gram queries when the component mounts
+  // State variables for loading saved queries
+  const [savedQueries, setSavedQueries] = useState<any[]>([]);
+  const [selectedQueryName, setSelectedQueryName] = useState<string>('');
+  const [isLoadingQueries, setIsLoadingQueries] = useState<boolean>(false);
+
+  // Fetch saved n-gram queries and saved queries when the component mounts
+  useEffect(() => {
+    fetchSavedNgrams();
+    fetchSavedQueries();
+  }, []);
+
+  // Fetch saved n-gram queries function
   const fetchSavedNgrams = async () => {
     setIsLoadingNgrams(true);
     setError(null);
@@ -45,62 +56,190 @@ export default function NgramPage() {
     }
   };
 
-  useEffect(() => {
-    fetchSavedNgrams();
-
-    // Attempt to extract user_id from the URL
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const userIdFromQuery = params.get('user_id');
-      if (userIdFromQuery) {
-        setUserId(userIdFromQuery);
-      } else {
-        setUserId('0'); // Default to '0' if not found
+  // Fetch saved queries function
+  const fetchSavedQueries = async () => {
+    setIsLoadingQueries(true);
+    setError(null);
+    try {
+      const url = `${BACKEND_IP}/load?computed_type=query&name=all`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
       }
-    }
-  }, []);
-
-  // Handle selecting a saved n-gram query
-  const handleSelectSavedNgram = (value: string) => {
-    const ngramId = value;
-    setSelectedNgramName(ngramId);
-
-    // Find the selected n-gram in the savedNgrams array
-    const selectedNgram = savedNgrams.find((ngram) => ngram._id === ngramId);
-    if (selectedNgram) {
-      const content = selectedNgram.content;
-      setStartDate(content.start_date || '2010-01-01');
-      setEndDate(content.end_date || '2024-03-01');
-      setKeywords(content.keywords || []);
+      const data = await res.json();
+      setSavedQueries(data.content || []);
+    } catch (err: any) {
+      console.error('Error fetching saved queries:', err);
+      setError(err.message || 'Error fetching saved queries. Please try again.');
+    } finally {
+      setIsLoadingQueries(false);
     }
   };
 
-  // Prepare options for the custom select
+  // Handle selecting a saved n-gram query
+  const handleSelectSavedNgram = async (value: string) => {
+    const ngramName = value;
+    setSelectedNgramName(ngramName);
+
+    // Load the saved n-gram query using the /load endpoint
+    try {
+      const url = `${BACKEND_IP}/load?computed_type=ngram&name=${encodeURIComponent(ngramName)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Data received from /load:', data);
+
+      // Ensure data.content is an array and has at least one item
+      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+        // Find the saved n-gram with the matching _id
+        const savedNgram = data.content.find((item: { _id: string; }) => item._id === ngramName);
+
+        if (savedNgram) {
+          const content = savedNgram.content;
+
+          if (!content) {
+            throw new Error('Content is undefined.');
+          }
+
+          setStartDate(content.start_date || '2010-01-01');
+          setEndDate(content.end_date || '2024-03-01');
+          setKeywords(content.keywords || []);
+        } else {
+          throw new Error('Saved n-gram query not found in response.');
+        }
+      } else {
+        throw new Error('No content in response from /load endpoint.');
+      }
+    } catch (err: any) {
+      console.error('Error loading n-gram query:', err);
+      setError(err.message || 'Error loading n-gram query. Please try again.');
+    }
+  };
+
+  // Handle selecting a saved query
+  const handleSelectSavedQuery = async (value: string) => {
+    const queryName = value;
+    setSelectedQueryName(queryName);
+
+    // Load the saved query using the /load endpoint
+    try {
+      const url = `${BACKEND_IP}/load?computed_type=query&name=${encodeURIComponent(queryName)}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+      const data = await res.json();
+      console.log('Data received from /load:', data);
+
+      // Ensure data.content is an array and has at least one item
+      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
+        // Find the saved query with the matching _id
+        const savedQuery = data.content.find((item: { _id: string; }) => item._id === queryName);
+
+        if (savedQuery) {
+          const content = savedQuery.content;
+
+          if (!content) {
+            throw new Error('Content is undefined.');
+          }
+
+          // Use the content to build a request to the /query endpoint
+          const queryResponse = await fetchQueryData(content);
+
+          // Update the state with the data from the /query endpoint
+          if (queryResponse.user) {
+            setUserId(queryResponse.user);
+          }
+
+          // Do not use keywords from query content for N-gram
+          // N-gram keywords should be from the N-gram form state
+          // Build n-gram content using the N-gram form's keywords
+          const ngramContent = {
+            start_date: startDate,
+            end_date: endDate,
+            keywords: keywords,
+          };
+
+          // Fetch n-gram data using the content and user ID
+          await fetchNgramData(ngramContent, queryResponse.user);
+        } else {
+          throw new Error('Saved query not found in response.');
+        }
+      } else {
+        throw new Error('No content in response from /load endpoint.');
+      }
+    } catch (err: any) {
+      console.error('Error loading query:', err);
+      setError(err.message || 'Error loading query. Please try again.');
+    }
+  };
+
+  // Prepare options for the custom selects
   const savedNgramOptions = savedNgrams.map((ngram) => ({
     value: ngram._id,
     label: ngram.name || ngram._id,
   }));
 
-  // Handle form submission
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const savedQueryOptions = savedQueries.map((query) => ({
+    value: query._id,
+    label: query.name || query._id,
+  }));
+
+  // Function to fetch data from the /query endpoint
+  const fetchQueryData = async (content: any) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const finalKeywords = content.keywords && content.keywords.length > 0 ? content.keywords : ['all'];
+      const finalGroups = content.groups && content.groups.length > 0 ? content.groups : ['all'];
+
+      const encodedKeywords = finalKeywords.map((keyword: string) => encodeURIComponent(keyword)).join(',');
+      const encodedGroups = finalGroups.map((group: string) => encodeURIComponent(group)).join(',');
+
+      const startDateInt = parseInt(content.start_date.replace(/-/g, ''), 10);
+      const endDateInt = parseInt(content.end_date.replace(/-/g, ''), 10);
+
+      const url = `${BACKEND_IP}/query?country=${encodeURIComponent(
+        content.country || 'USA'
+      )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${content.num_comments || -1}&post_or_comment=${content.post_or_comment || 'posts'}&num_documents=${content.num_documents || 50}`;
+
+      const res = await fetch(url, { method: 'GET' });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      return data; // Contains 'user' and 'response'
+    } catch (err: any) {
+      console.error('Error fetching data from /query:', err);
+      setError(err.message || 'Error fetching data from /query. Please try again.');
+      return {};
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to fetch data from the /ngram endpoint
+  const fetchNgramData = async (content: any, userIdParam: string) => {
     setIsLoading(true);
     setError(null);
     setResponse(null);
 
-    // Ensure keywords have default values if empty
-    const finalKeywords = keywords.length > 0 ? keywords : ['all'];
+    const finalKeywords = content.keywords && content.keywords.length > 0 ? content.keywords : ['all'];
 
-    // Encode keywords as comma-separated values
-    const encodedKeywords = finalKeywords.map((keyword) => encodeURIComponent(keyword)).join(',');
+    const encodedKeywords = finalKeywords.map((keyword: string) => encodeURIComponent(keyword)).join(',');
 
     // Convert start and end dates to integer format (YYYYMMDD)
-    const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
-    const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
+    const startDateInt = parseInt(content.start_date.replace(/-/g, ''), 10);
+    const endDateInt = parseInt(content.end_date.replace(/-/g, ''), 10);
 
     // Construct the URL using query parameters, including user_id
     const url = `${BACKEND_IP}/ngram?user_id=${encodeURIComponent(
-      userId
+      userIdParam || '0'
     )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
 
     try {
@@ -111,12 +250,50 @@ export default function NgramPage() {
       }
 
       const data = await res.json();
-      setResponse(data);
+      setResponse(data.content);
     } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.message || 'Error fetching data. Please try again.');
+      console.error('Error fetching data from /ngram:', err);
+      setError(err.message || 'Error fetching data from /ngram. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    // Build content object from current state
+    const content = {
+      start_date: startDate,
+      end_date: endDate,
+      keywords: keywords,
+    };
+
+    // If userId is null, make a /query request to get a userId
+    if (!userId) {
+      // Build default query content
+      const defaultQueryContent = {
+        country: 'USA',
+        start_date: startDate,
+        end_date: endDate,
+        keywords: [], // Empty keywords for default query
+        groups: [],
+        num_comments: -1,
+        post_or_comment: 'posts',
+        num_documents: 50,
+      };
+
+      const queryResponse = await fetchQueryData(defaultQueryContent);
+
+      if (queryResponse.user) {
+        setUserId(queryResponse.user);
+        await fetchNgramData(content, queryResponse.user);
+      } else {
+        setError('Failed to get user ID from /query response.');
+      }
+    } else {
+      await fetchNgramData(content, userId);
     }
   };
 
@@ -192,6 +369,21 @@ export default function NgramPage() {
 
   return (
     <div className="ngram-page">
+
+
+      {/* Load Saved Queries Section */}
+      <div className="load-query-section">
+        {isLoadingQueries ? (
+          <p>Loading saved queries...</p>
+        ) : (
+          <CustomSelect
+            options={savedQueryOptions}
+            selectedValue={selectedQueryName}
+            onChange={handleSelectSavedQuery}
+            placeholder="-- Select a Saved BabyCenterDB Query --"
+          />
+        )}
+      </div>
 
       {/* Load Saved N-Gram Queries Section */}
       <div className="load-ngram-section">
@@ -318,11 +510,13 @@ export default function NgramPage() {
           margin-bottom: 20px;
         }
 
+        .load-query-section,
         .load-ngram-section {
           margin-bottom: 20px;
           color: black;
         }
 
+        .load-query-section label,
         .load-ngram-section label {
           font-weight: bold;
           margin-right: 10px;
