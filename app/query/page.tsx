@@ -200,11 +200,9 @@ export default function QueryPage() {
 
   return (
     <div className="query-page">
-      <h1 className="page-title">Query Page</h1>
 
       {/* Load Saved Queries Section */}
       <div className="load-query-section">
-        <label htmlFor="savedQueries">Load Saved Query:</label>
         {isLoadingQueries ? (
           <p>Loading saved queries...</p>
         ) : (
@@ -214,7 +212,7 @@ export default function QueryPage() {
             onChange={handleSelectSavedQuery}
             style={{ color: 'black' }} // Ensure the font color is black
           >
-            <option value="" style={{ color: 'black' }}>-- Select a Saved Query --</option>
+            <option value="" style={{ color: 'black' }}>-- Select a Saved BabyCenterDB Query --</option>
             {savedQueries.map((query, index) => (
               <option key={index} value={query._id} style={{ color: 'black' }}>
                 {query._id}
