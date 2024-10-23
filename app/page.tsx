@@ -19,22 +19,23 @@ export default function Home() {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '100vh',
     backgroundColor: 'black',
+    minHeight: '100vh',
   };
 
   const contentContainerStyle: CSSProperties = {
     display: 'flex',
+    flexDirection: 'column', // Stack elements vertically
     width: '80%',
-    gap: '20px',
+    gap: '20px', // Add space between stacked pages
   };
 
   const pageStyle: CSSProperties = {
-    flex: 1,
     backgroundColor: 'black',
     padding: '20px',
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
     borderRadius: '8px',
+    width: '100%', // Make each page take full width
   };
 
   return (

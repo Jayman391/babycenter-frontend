@@ -7,18 +7,34 @@ type QueryPageProps = {
   userId: string;
 };
 
+interface QueryResponseItem {
+  _id: string;
+  author: string;
+  country: string;
+  date: string;
+  group: string;
+  num_comments: number;
+  text: string;
+  time_delta: number;
+  title: string;
+  url: string;
+}
+
 export default function QueryPage({ userId }: QueryPageProps) {
   const [country, setCountry] = useState('USA');
   const [startDate, setStartDate] = useState('2010-01-01');
   const [endDate, setEndDate] = useState('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState('');
-  const [queryName, setQueryName] = useState(''); // Added for saving queries
-  const [savedQueries, setSavedQueries] = useState<any[]>([]); // For loading saved queries
+  const [queryName, setQueryName] = useState('');
+  const [savedQueries, setSavedQueries] = useState<any[]>([]);
   const [selectedQuery, setSelectedQuery] = useState<string>('');
-  const [response, setResponse] = useState<any | null>(null);
+  const [response, setResponse] = useState<QueryResponseItem[] | null>(null);
+  const [displayedData, setDisplayedData] = useState<QueryResponseItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showTable, setShowTable] = useState(false);
+  const [itemsToShow, setItemsToShow] = useState(10);
 
   // Fetch saved queries on mount
   useEffect(() => {
@@ -34,7 +50,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
       }
     };
     fetchSavedQueries();
-  }, []);
+  }, [userId]);
 
   // Handle form submission
   const handleSubmit = async (event: React.FormEvent) => {
@@ -42,17 +58,23 @@ export default function QueryPage({ userId }: QueryPageProps) {
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setDisplayedData([]);
+    setShowTable(false);
+    setItemsToShow(10);
 
-    const encodedKeywords = keywords.length > 0
-      ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
-      : 'all';
+    const encodedKeywords =
+      keywords.length > 0
+        ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
+        : 'all';
 
     const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
     const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(
       userId
-    )}&country=${encodeURIComponent(country)}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=all&num_comments=-1&post_or_comment=posts&num_documents=50`;
+    )}&country=${encodeURIComponent(
+      country
+    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=all&num_comments=-1&post_or_comment=posts&num_documents=50`;
 
     try {
       const res = await fetch(url);
@@ -67,28 +89,28 @@ export default function QueryPage({ userId }: QueryPageProps) {
       setIsLoading(false);
     }
   };
-  
+
   // Handle saving a query
   const handleSaveQuery = async () => {
     if (!queryName.trim()) {
       alert('Please provide a name for your query before saving.');
       return;
     }
-  
+
     const saveUrl = `${BACKEND_IP}/save`;
     const saveParams = {
       type: 'query',
-      name: queryName, // Query name (query identifier)
-      _id: `${userId}-${queryName}`, // Unique ID combining userId and query name
+      name: queryName,
+      _id: `${userId}-${queryName}`,
       content: {
-        userId, // Ensure the userId is passed
+        userId,
         country,
         startDate,
         endDate,
         keywords,
       },
     };
-  
+
     try {
       const res = await fetch(saveUrl, {
         method: 'POST',
@@ -97,18 +119,17 @@ export default function QueryPage({ userId }: QueryPageProps) {
         },
         body: JSON.stringify(saveParams),
       });
-  
+
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
       }
-  
+
       alert('Query saved successfully.');
-      setQueryName(''); // Reset query name after saving
+      setQueryName('');
     } catch (err: any) {
       setError(err.message || 'Error saving query.');
     }
   };
-  
 
   // Handle loading a saved query
   const handleLoadQuery = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -134,8 +155,81 @@ export default function QueryPage({ userId }: QueryPageProps) {
     }
   };
 
+  // Handle displaying the table
+  const handleShowTable = () => {
+    if (response) {
+      setDisplayedData(response.slice(0, itemsToShow));
+      setShowTable(true);
+    }
+  };
+
+  // **New Function to Hide the Table**
+  const handleHideTable = () => {
+    setShowTable(false);
+    setDisplayedData([]);
+    setItemsToShow(10);
+  };
+
+  // Handle loading more data
+  const handleLoadMore = () => {
+    if (response) {
+      const newItemsToShow = itemsToShow + 10;
+      setItemsToShow(newItemsToShow);
+      setDisplayedData(response.slice(0, newItemsToShow));
+    }
+  };
+
+  // Handle saving the data table as CSV
+  const handleSaveTable = () => {
+    if (!response || response.length === 0) {
+      alert('No data to save.');
+      return;
+    }
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [
+        ['ID', 'Author', 'Country', 'Date', 'Group', 'Comments', 'Title', 'Text', 'URL'],
+        ...response.map((item) => [
+          item._id,
+          item.author,
+          item.country,
+          new Date(item.date).toLocaleDateString(),
+          item.group,
+          item.num_comments,
+          `"${item.title.replace(/"/g, '""')}"`, // Escape quotes in title
+          `"${item.text.replace(/"/g, '""')}"`, // Escape quotes in text
+          item.url,
+        ]),
+      ]
+        .map((e) => e.join(','))
+        .join('\n');
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'query_results.csv');
+    document.body.appendChild(link); // Required for FF
+
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const tableStyle: React.CSSProperties = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    marginTop: '20px',
+    border: '1px solid #ccc',
+  };
+
+  const thTdStyle: React.CSSProperties = {
+    border: '1px solid #ccc',
+    padding: '8px',
+    textAlign: 'left',
+  };
+
   return (
-    <div className="query-page" style={{color : 'black'}}>
+    <div className="query-page" style={{ color: 'black' }}>
       <form onSubmit={handleSubmit} className="query-form">
         <h2>Custom Query</h2>
 
@@ -194,7 +288,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
               placeholder="Enter a keyword"
             />
             <button type="button" onClick={handleKeywordAdd}>
-              Add 
+              Add
             </button>
           </div>
           <ul className="keyword-list">
@@ -220,11 +314,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
         <div className="form-group">
           <label htmlFor="loadQuery">Load Saved Query:</label>
-          <select
-            id="loadQuery"
-            value={selectedQuery}
-            onChange={handleLoadQuery}
-          >
+          <select id="loadQuery" value={selectedQuery} onChange={handleLoadQuery}>
             <option value="">Select a Query</option>
             {savedQueries.map((query) => (
               <option key={query._id} value={query._id}>
@@ -243,17 +333,76 @@ export default function QueryPage({ userId }: QueryPageProps) {
         {error && <p className="error">{error}</p>}
       </form>
 
+      {isLoading && <p>Loading...</p>}
+
       {response && (
+        <div className="response-buttons">
+          {!showTable ? (
+            <button onClick={handleShowTable} className="show-table-button">
+              Show Results
+            </button>
+          ) : (
+            <button onClick={handleHideTable} className="hide-table-button">
+              Hide Table
+            </button>
+          )}
+          <button onClick={handleSaveTable} className="save-table-button">
+            Save Table
+          </button>
+        </div>
+      )}
+
+      {showTable && (
         <div className="response">
-          <h3>Query Response:</h3>
-          {/* <pre>{JSON.stringify(response, null, 2)}</pre> */}
+          <h3>Query Results:</h3>
+          <table style={tableStyle}>
+            <thead>
+              <tr>
+                <th style={thTdStyle}>ID</th>
+                <th style={thTdStyle}>Author</th>
+                <th style={thTdStyle}>Country</th>
+                <th style={thTdStyle}>Date</th>
+                <th style={thTdStyle}>Group</th>
+                <th style={thTdStyle}>Comments</th>
+                <th style={thTdStyle}>Title</th>
+                <th style={thTdStyle}>Text</th>
+                <th style={thTdStyle}>Link</th>
+              </tr>
+            </thead>
+            <tbody style={{color : 'white'}}>
+              {displayedData.map((item) => (
+                <tr key={item._id}>
+                  <td style={thTdStyle}>{item._id}</td>
+                  <td style={thTdStyle}>{item.author}</td>
+                  <td style={thTdStyle}>{item.country}</td>
+                  <td style={thTdStyle}>
+                    {new Date(item.date).toLocaleDateString()}
+                  </td>
+                  <td style={thTdStyle}>{item.group}</td>
+                  <td style={thTdStyle}>{item.num_comments}</td>
+                  <td style={thTdStyle}>{item.title}</td>
+                  <td style={thTdStyle}>{item.text}</td>
+                  <td style={thTdStyle}>
+                    <a href={item.url} target="_blank" rel="noopener noreferrer">
+                      View Post
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {itemsToShow < (response?.length || 0) && (
+            <button onClick={handleLoadMore} className="load-more-button">
+              Load More
+            </button>
+          )}
         </div>
       )}
 
       <style jsx>{`
         .query-page {
-          max-width: 600px;
-          margin: 0 auto;
+          width: 100%;
+          margin: 0;
           padding: 20px;
           font-family: Arial, sans-serif;
         }
@@ -319,16 +468,25 @@ export default function QueryPage({ userId }: QueryPageProps) {
           margin-top: 20px;
         }
 
-        .submit-button {
+        .submit-button,
+        .show-table-button,
+        .hide-table-button,
+        .save-table-button,
+        .load-more-button {
           padding: 10px 15px;
           background-color: #007bff;
           color: #fff;
           border: none;
           border-radius: 3px;
           cursor: pointer;
+          margin-right: 10px;
         }
 
-        .submit-button:hover {
+        .submit-button:hover,
+        .show-table-button:hover,
+        .hide-table-button:hover,
+        .save-table-button:hover,
+        .load-more-button:hover {
           background-color: #0069d9;
         }
 
@@ -338,15 +496,37 @@ export default function QueryPage({ userId }: QueryPageProps) {
           text-align: center;
         }
 
+        .response-buttons {
+          margin-top: 20px;
+          display: flex;
+          gap: 10px;
+        }
+
         .response {
           margin-top: 30px;
-          background-color: #f1f1f1;
           padding: 15px;
           border-radius: 5px;
         }
 
         .response h3 {
           margin-bottom: 10px;
+        }
+
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 20px;
+        }
+
+        th,
+        td {
+          border: 1px solid #ccc;
+          padding: 8px;
+          text-align: left;
+        }
+
+        th {
+          background-color: #f2f2f2;
         }
       `}</style>
     </div>
