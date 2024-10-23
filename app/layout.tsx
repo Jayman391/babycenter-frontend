@@ -1,11 +1,8 @@
 // app/layout.tsx
 
 import type { Metadata } from "next";
-import Nav from "./nav";
 import localFont from "next/font/local";
 import "./globals.css";
-import { BACKEND_IP } from "./config"; // Import from config.ts
-import Auth from "./auth";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -36,7 +33,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {/* <Auth /> */}
-        <Nav />
         {children}
       </body>
     </html>

@@ -1,577 +1,238 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { BACKEND_IP } from '../config'; // Adjust the import path if necessary
-import { CustomSelect } from '../CustomSelect'; // Adjust the import path accordingly
+import { BACKEND_IP } from '../config';
 
-export default function NgramPage() {
-  // State variables for form inputs
-  const [startDate, setStartDate] = useState<string>('2010-01-01');
-  const [endDate, setEndDate] = useState<string>('2024-03-01');
+type NgramPageProps = {
+  userId: string;
+};
+
+export default function NgramPage({ userId }: NgramPageProps) {
+  const [startDate, setStartDate] = useState('2010-01-01');
+  const [endDate, setEndDate] = useState('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState<string>('');
-  const [ngramName, setNgramName] = useState<string>(''); // New state variable for n-gram name
-
-  // State variable for user ID
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // State variables for handling responses and loading state
-  const [response, setResponse] = useState<any | null>(null); // Flexible response handling
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [keywordInput, setKeywordInput] = useState('');
+  const [ngramName, setNgramName] = useState('');
+  const [savedNgrams, setSavedNgrams] = useState<any[]>([]);
+  const [selectedNgram, setSelectedNgram] = useState<string>('');
+  const [response, setResponse] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State variables for loading saved n-gram queries
-  const [savedNgrams, setSavedNgrams] = useState<any[]>([]);
-  const [selectedNgramName, setSelectedNgramName] = useState<string>('');
-  const [isLoadingNgrams, setIsLoadingNgrams] = useState<boolean>(false);
-
-  // State variables for loading saved queries
-  const [savedQueries, setSavedQueries] = useState<any[]>([]);
-  const [selectedQueryName, setSelectedQueryName] = useState<string>('');
-  const [isLoadingQueries, setIsLoadingQueries] = useState<boolean>(false);
-
-  // Fetch saved n-gram queries and saved queries when the component mounts
   useEffect(() => {
+    const fetchSavedNgrams = async () => {
+      const url = `${BACKEND_IP}/load?computed_type=ngram&name=all`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
+        setSavedNgrams(data.content || []);
+      } catch (err: any) {
+        setError(err.message || 'Error loading saved N-grams.');
+      }
+    };
     fetchSavedNgrams();
-    fetchSavedQueries();
   }, []);
 
-  // Fetch saved n-gram queries function
-  const fetchSavedNgrams = async () => {
-    setIsLoadingNgrams(true);
-    setError(null);
-    try {
-      const url = `${BACKEND_IP}/load?computed_type=ngram&name=all`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-      const data = await res.json();
-      setSavedNgrams(data.content || []);
-    } catch (err: any) {
-      console.error('Error fetching saved n-grams:', err);
-      setError(err.message || 'Error fetching saved n-grams. Please try again.');
-    } finally {
-      setIsLoadingNgrams(false);
-    }
-  };
-
-  // Fetch saved queries function
-  const fetchSavedQueries = async () => {
-    setIsLoadingQueries(true);
-    setError(null);
-    try {
-      const url = `${BACKEND_IP}/load?computed_type=query&name=all`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-      const data = await res.json();
-      setSavedQueries(data.content || []);
-    } catch (err: any) {
-      console.error('Error fetching saved queries:', err);
-      setError(err.message || 'Error fetching saved queries. Please try again.');
-    } finally {
-      setIsLoadingQueries(false);
-    }
-  };
-
-  // Handle selecting a saved n-gram query
-  const handleSelectSavedNgram = async (value: string) => {
-    const ngramName = value;
-    setSelectedNgramName(ngramName);
-
-    // Load the saved n-gram query using the /load endpoint
-    try {
-      const url = `${BACKEND_IP}/load?computed_type=ngram&name=${encodeURIComponent(ngramName)}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-      const data = await res.json();
-      console.log('Data received from /load:', data);
-
-      // Ensure data.content is an array and has at least one item
-      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-        // Find the saved n-gram with the matching _id
-        const savedNgram = data.content.find((item: { _id: string; }) => item._id === ngramName);
-
-        if (savedNgram) {
-          const content = savedNgram.content;
-
-          if (!content) {
-            throw new Error('Content is undefined.');
-          }
-
-          setStartDate(content.start_date || '2010-01-01');
-          setEndDate(content.end_date || '2024-03-01');
-          setKeywords(content.keywords || []);
-        } else {
-          throw new Error('Saved n-gram query not found in response.');
-        }
-      } else {
-        throw new Error('No content in response from /load endpoint.');
-      }
-    } catch (err: any) {
-      console.error('Error loading n-gram query:', err);
-      setError(err.message || 'Error loading n-gram query. Please try again.');
-    }
-  };
-
-  // Handle selecting a saved query
-  const handleSelectSavedQuery = async (value: string) => {
-    const queryName = value;
-    setSelectedQueryName(queryName);
-
-    // Load the saved query using the /load endpoint
-    try {
-      const url = `${BACKEND_IP}/load?computed_type=query&name=${encodeURIComponent(queryName)}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-      const data = await res.json();
-      console.log('Data received from /load:', data);
-
-      // Ensure data.content is an array and has at least one item
-      if (data.content && Array.isArray(data.content) && data.content.length > 0) {
-        // Find the saved query with the matching _id
-        const savedQuery = data.content.find((item: { _id: string; }) => item._id === queryName);
-
-        if (savedQuery) {
-          const content = savedQuery.content;
-
-          if (!content) {
-            throw new Error('Content is undefined.');
-          }
-
-          // Use the content to build a request to the /query endpoint
-          const queryResponse = await fetchQueryData(content);
-
-          // Update the state with the data from the /query endpoint
-          if (queryResponse.user) {
-            setUserId(queryResponse.user);
-          }
-
-          // Do not use keywords from query content for N-gram
-          // N-gram keywords should be from the N-gram form state
-          // Build n-gram content using the N-gram form's keywords
-          const ngramContent = {
-            start_date: startDate,
-            end_date: endDate,
-            keywords: keywords,
-          };
-
-          // Fetch n-gram data using the content and user ID
-          await fetchNgramData(ngramContent, queryResponse.user);
-        } else {
-          throw new Error('Saved query not found in response.');
-        }
-      } else {
-        throw new Error('No content in response from /load endpoint.');
-      }
-    } catch (err: any) {
-      console.error('Error loading query:', err);
-      setError(err.message || 'Error loading query. Please try again.');
-    }
-  };
-
-  // Prepare options for the custom selects
-  const savedNgramOptions = savedNgrams.map((ngram) => ({
-    value: ngram._id,
-    label: ngram.name || ngram._id,
-  }));
-
-  const savedQueryOptions = savedQueries.map((query) => ({
-    value: query._id,
-    label: query.name || query._id,
-  }));
-
-  // Function to fetch data from the /query endpoint
-  const fetchQueryData = async (content: any) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const finalKeywords = content.keywords && content.keywords.length > 0 ? content.keywords : ['all'];
-      const finalGroups = content.groups && content.groups.length > 0 ? content.groups : ['all'];
-
-      const encodedKeywords = finalKeywords.map((keyword: string) => encodeURIComponent(keyword)).join(',');
-      const encodedGroups = finalGroups.map((group: string) => encodeURIComponent(group)).join(',');
-
-      const startDateInt = parseInt(content.start_date.replace(/-/g, ''), 10);
-      const endDateInt = parseInt(content.end_date.replace(/-/g, ''), 10);
-
-      const url = `${BACKEND_IP}/query?country=${encodeURIComponent(
-        content.country || 'USA'
-      )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${content.num_comments || -1}&post_or_comment=${content.post_or_comment || 'posts'}&num_documents=${content.num_documents || 50}`;
-
-      const res = await fetch(url, { method: 'GET' });
-
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
-      const data = await res.json();
-      return data; // Contains 'user' and 'response'
-    } catch (err: any) {
-      console.error('Error fetching data from /query:', err);
-      setError(err.message || 'Error fetching data from /query. Please try again.');
-      return {};
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Function to fetch data from the /ngram endpoint
-  const fetchNgramData = async (content: any, userIdParam: string) => {
+  const fetchNgramData = async () => {
     setIsLoading(true);
     setError(null);
     setResponse(null);
 
-    const finalKeywords = content.keywords && content.keywords.length > 0 ? content.keywords : ['all'];
+    const encodedKeywords = keywords.map((k) => encodeURIComponent(k)).join(',') || 'all';
+    const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
+    const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-    const encodedKeywords = finalKeywords.map((keyword: string) => encodeURIComponent(keyword)).join(',');
-
-    // Convert start and end dates to integer format (YYYYMMDD)
-    const startDateInt = parseInt(content.start_date.replace(/-/g, ''), 10);
-    const endDateInt = parseInt(content.end_date.replace(/-/g, ''), 10);
-
-    // Construct the URL using query parameters, including user_id
-    const url = `${BACKEND_IP}/ngram?user_id=${encodeURIComponent(
-      userIdParam || '0'
-    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
+    const url = `${BACKEND_IP}/ngram?user_id=${encodeURIComponent(userId)}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
 
     try {
-      const res = await fetch(url, { method: 'GET' });
-
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setResponse(data.content);
     } catch (err: any) {
-      console.error('Error fetching data from /ngram:', err);
-      setError(err.message || 'Error fetching data from /ngram. Please try again.');
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle form submission
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    // Build content object from current state
-    const content = {
-      start_date: startDate,
-      end_date: endDate,
-      keywords: keywords,
-    };
-
-    // If userId is null, make a /query request to get a userId
-    if (!userId) {
-      // Build default query content
-      const defaultQueryContent = {
-        country: 'USA',
-        start_date: startDate,
-        end_date: endDate,
-        keywords: [], // Empty keywords for default query
-        groups: [],
-        num_comments: -1,
-        post_or_comment: 'posts',
-        num_documents: 50,
-      };
-
-      const queryResponse = await fetchQueryData(defaultQueryContent);
-
-      if (queryResponse.user) {
-        setUserId(queryResponse.user);
-        await fetchNgramData(content, queryResponse.user);
-      } else {
-        setError('Failed to get user ID from /query response.');
-      }
-    } else {
-      await fetchNgramData(content, userId);
-    }
-  };
-
-  // Save N-gram Query Function
-  const handleSave = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    if (!ngramName.trim()) {
-      alert('Please enter a name for your N-gram query before saving.');
-      setIsLoading(false);
-      return;
-    }
-
-    const saveUrl = `${BACKEND_IP}/save`;
-
-    const saveParams = {
-      type: 'ngram',
-      name: ngramName, // Use the user-provided name
-      content: {
-        start_date: startDate,
-        end_date: endDate,
-        keywords: keywords,
-      },
-    };
-
-    try {
-      const res = await fetch(saveUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(saveParams),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
-      const data = await res.json();
-      alert('N-gram query saved successfully');
-
-      // Refresh the saved n-grams list by fetching from backend
-      await fetchSavedNgrams();
-      setNgramName(''); // Clear the n-gram name after saving
-    } catch (err: any) {
-      console.error('Error saving n-gram query:', err);
-      setError(err.message || 'Error saving n-gram query. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle changes in the keyword input field
-  const handleKeywordChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setKeywordInput(event.target.value);
-  };
-
-  // Handle adding a keyword to the list
   const handleKeywordAdd = (event: React.FormEvent) => {
     event.preventDefault();
     const trimmedKeyword = keywordInput.trim();
-    if (trimmedKeyword !== '') {
-      setKeywords((prevKeywords) => [...prevKeywords, trimmedKeyword]);
+    if (trimmedKeyword) {
+      setKeywords([...keywords, trimmedKeyword]);
       setKeywordInput('');
     }
   };
 
-  // Handle removing a keyword from the list
-  const handleKeywordRemove = (index: number) => {
-    setKeywords((prevKeywords) => prevKeywords.filter((_, i) => i !== index));
+  const handleKeywordDelete = (keywordToRemove: string) => {
+    setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
+  };
+
+  const handleSaveNgram = async () => {
+    if (!ngramName.trim()) {
+      alert('Please provide a name for your N-gram.');
+      return;
+    }
+    const saveParams = {
+      type: 'ngram',
+      _id: `${userId}-${ngramName}`,
+      content: { userId, startDate, endDate, keywords },
+    };
+
+    try {
+      const res = await fetch(`${BACKEND_IP}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveParams),
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      alert('N-gram saved successfully.');
+      setNgramName('');
+    } catch (err: any) {
+      setError(err.message || 'Error saving N-gram.');
+    }
+  };
+
+  const handleLoadNgram = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const ngramId = event.target.value;
+    setSelectedNgram(ngramId);
+
+    const selected = savedNgrams.find((ngram) => ngram._id === ngramId);
+    if (selected) {
+      const { startDate, endDate, keywords } = selected.content;
+      setStartDate(startDate || '2010-01-01');
+      setEndDate(endDate || '2024-03-01');
+      setKeywords(keywords || []);
+    }
   };
 
   return (
-    <div className="ngram-page">
+    <div className="ngram-page" style={{color : 'black'}}>
+      <form className="ngram-form" onSubmit={(e) => e.preventDefault()}>
+        <h2>N-Gram Visualization</h2>
 
-
-      {/* Load Saved Queries Section */}
-      <div className="load-query-section">
-        {isLoadingQueries ? (
-          <p>Loading saved queries...</p>
-        ) : (
-          <CustomSelect
-            options={savedQueryOptions}
-            selectedValue={selectedQueryName}
-            onChange={handleSelectSavedQuery}
-            placeholder="-- Select a Saved BabyCenterDB Query --"
-          />
-        )}
-      </div>
-
-      {/* Load Saved N-Gram Queries Section */}
-      <div className="load-ngram-section">
-        {isLoadingNgrams ? (
-          <p>Loading saved n-gram queries...</p>
-        ) : (
-          <CustomSelect
-            options={savedNgramOptions}
-            selectedValue={selectedNgramName}
-            onChange={handleSelectSavedNgram}
-            placeholder="-- Select a Saved N-Gram Query --"
-          />
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className="ngram-form">
-        {/* N-Gram Query Name Input */}
-        <div className="form-group">
-          <label htmlFor="ngramName">N-Gram Query Name:</label>
-          <input
-            type="text"
-            id="ngramName"
-            value={ngramName}
-            onChange={(e) => setNgramName(e.target.value)}
-            placeholder="Enter a name for your N-Gram query"
-            required
-            style={{ color: 'black' }}
-          />
-        </div>
-
-        {/* Start Date */}
         <div className="form-group">
           <label htmlFor="startDate">Start Date:</label>
-          <input
-            type="date"
-            id="startDate"
-            name="startDate"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            required
-            style={{ color: 'black' }}
-          />
+          <input type="date" id="startDate" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
         </div>
 
-        {/* End Date */}
         <div className="form-group">
           <label htmlFor="endDate">End Date:</label>
-          <input
-            type="date"
-            id="endDate"
-            name="endDate"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            required
-            style={{ color: 'black' }}
-          />
+          <input type="date" id="endDate" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
         </div>
 
-        {/* Keywords Input */}
         <div className="form-group">
-          <label htmlFor="keywords">Add Keywords or leave blank for default:</label>
-          <div className="input-button-group">
-            <textarea
-              id="keywords"
+          <label>Keywords:</label>
+          <div className="input-group">
+            <input
+              type="text"
               value={keywordInput}
-              onChange={handleKeywordChange}
+              onChange={(e) => setKeywordInput(e.target.value)}
               placeholder="Enter a keyword"
-              rows={2}
-              style={{ color: 'black' }}
             />
-            <button type="button" onClick={handleKeywordAdd} className="add-button">
-              Add Keyword
-            </button>
+            <button onClick={handleKeywordAdd}>Add</button>
           </div>
           <ul className="keyword-list">
             {keywords.map((keyword, index) => (
-              <li key={index} style={{ color: 'black' }}>
-                {keyword}{' '}
-                <button
-                  type="button"
-                  onClick={() => handleKeywordRemove(index)}
-                  className="remove-button"
-                >
-                  Remove
-                </button>
+              <li key={index}>
+                {keyword}
+                <button onClick={() => handleKeywordDelete(keyword)}>Delete</button>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Save and Submit Buttons */}
-        <div className="form-group buttons">
-          <button type="button" onClick={handleSave} className="save-button">
-            Save N-Gram Query
-          </button>
-          <input type="submit" value="Submit" className="submit-button" />
+        <div className="form-group">
+          <label htmlFor="ngramName">N-Gram Name:</label>
+          <input
+            type="text"
+            id="ngramName"
+            value={ngramName}
+            onChange={(e) => setNgramName(e.target.value)}
+            placeholder="Enter a name"
+          />
+          <button onClick={handleSaveNgram}>Save N-Gram</button>
         </div>
+
+        <div className="form-group">
+          <label>Load Saved N-Gram:</label>
+          <select value={selectedNgram} onChange={handleLoadNgram}>
+            <option value="">Select a Ngram Analysis</option>
+            {savedNgrams.map((ngram) => (
+              <option key={ngram._id} value={ngram._id}>
+                {ngram._id}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group buttons">
+          <button onClick={fetchNgramData} className="submit-button">
+            {isLoading ? 'Loading...' : 'Submit N-gram Query'}</button>
+        </div>
+
+        {error && <p className="error">{error}</p>}
       </form>
 
-      {/* Loading Indicator */}
-      {isLoading && <p>Loading...</p>}
-
-      {/* Error Message */}
-      {error && <div className="error">{error}</div>}
-
-      {/* Display Response */}
       {response && (
-        <div className="results">
-          <pre style={{ color: 'black' }}>{JSON.stringify(response, null, 2)}</pre>
+        <div className="response">
+          <h3>N-Gram Data:</h3>
+          <pre>{JSON.stringify(response, null, 2)}</pre>
         </div>
       )}
 
       <style jsx>{`
         .ngram-page {
-          max-width: 800px;
+          max-width: 600px;
           margin: 0 auto;
           padding: 20px;
           font-family: Arial, sans-serif;
         }
 
-        .page-title {
-          text-align: center;
-          color: #333;
-          margin-bottom: 20px;
-        }
-
-        .load-query-section,
-        .load-ngram-section {
-          margin-bottom: 20px;
-          color: black;
-        }
-
-        .load-query-section label,
-        .load-ngram-section label {
-          font-weight: bold;
-          margin-right: 10px;
-          color: #555;
-        }
-
         .ngram-form {
           background-color: #f9f9f9;
           padding: 20px;
-          border-radius: 5px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .ngram-form h2 {
+          text-align: center;
+          margin-bottom: 20px;
         }
 
         .form-group {
-          margin-bottom: 15px;
+          margin-bottom: 20px;
+          width: 100%;
         }
 
         .form-group label {
           display: block;
           font-weight: bold;
           margin-bottom: 5px;
-          color: #555;
         }
 
-        .form-group input[type='text'],
-        .form-group input[type='date'],
-        .form-group select,
-        .form-group textarea {
+        .form-group input,
+        .form-group select {
           width: 100%;
-          padding: 8px;
-          box-sizing: border-box;
+          padding: 10px;
+          margin-top: 5px;
           border: 1px solid #ccc;
-          border-radius: 3px;
+          border-radius: 4px;
+          box-sizing: border-box;
         }
 
-        .input-button-group {
+        .form-group buttons {
           display: flex;
-          align-items: center;
+          justify-content: center;
+          margin-top: 20px;
         }
 
-        .input-button-group textarea {
-          flex: 1;
-          margin-right: 10px;
-        }
-
-        .add-button {
-          padding: 8px 12px;
-          background-color: #28a745;
-          color: #fff;
-          border: none;
-          border-radius: 3px;
-          cursor: pointer;
-        }
-
-        .add-button:hover {
-          background-color: #218838;
+        .input-group {
+          display: flex;
+          gap: 10px;
         }
 
         .keyword-list {
@@ -581,39 +242,29 @@ export default function NgramPage() {
         }
 
         .keyword-list li {
-          background-color: #e9ecef;
-          padding: 8px;
-          margin-bottom: 5px;
-          border-radius: 3px;
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          color: black;
+          padding: 8px;
+          background-color: #e9ecef;
+          border-radius: 4px;
+          margin-bottom: 5px;
         }
 
-        .remove-button {
-          padding: 4px 8px;
-          background-color: #dc3545;
-          color: #fff;
-          border: none;
-          border-radius: 3px;
-          cursor: pointer;
-        }
-
-        .remove-button:hover {
-          background-color: #c82333;
-        }
-
-        .form-group.buttons {
+        .buttons {
           display: flex;
-          justify-content: flex-end;
+          justify-content: center;
           margin-top: 20px;
         }
 
-        .save-button,
+        .response {
+          margin-top: 20px;
+          padding: 15px;
+          background-color: #f1f1f1;
+          border-radius: 8px;
+        }
+
         .submit-button {
           padding: 10px 15px;
-          margin-left: 10px;
           background-color: #007bff;
           color: #fff;
           border: none;
@@ -621,32 +272,11 @@ export default function NgramPage() {
           cursor: pointer;
         }
 
-        .save-button:hover,
         .submit-button:hover {
           background-color: #0069d9;
         }
 
-        .results {
-          margin-top: 30px;
-          text-align: center;
-          color: black;
-        }
-
-        .results h2 {
-          color: #333;
-        }
-
-        .results pre {
-          text-align: left;
-          background-color: #f8f9fa;
-          padding: 15px;
-          border-radius: 5px;
-          overflow-x: auto;
-          color: black;
-        }
-
         .error {
-          margin-top: 20px;
           color: #dc3545;
           text-align: center;
         }

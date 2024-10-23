@@ -1,55 +1,56 @@
-"use client";
+'use client';
 
-import Link from 'next/link';
-import Auth from './auth';
-import { useEffect } from 'react';
+import React, { useState, useEffect, CSSProperties } from 'react';
+import QueryPage from './query/page';
+import NgramPage from './ngram/page';
+import LoginSignup from './login/page';
 
 export default function Home() {
+  const [userId, setUserId] = useState<string | null>(null);
 
- 
+  useEffect(() => {
+    const storedUserId = sessionStorage.getItem('userId'); // Retrieve userId on mount
+    if (storedUserId) setUserId(storedUserId);
+  }, []);
+
+  const handleSetUserId = (id: string) => setUserId(id);
+
+  const homePageStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    backgroundColor: 'black',
+  };
+
+  const contentContainerStyle: CSSProperties = {
+    display: 'flex',
+    width: '80%',
+    gap: '20px',
+  };
+
+  const pageStyle: CSSProperties = {
+    flex: 1,
+    backgroundColor: 'black',
+    padding: '20px',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    borderRadius: '8px',
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <div className="grid grid-cols-3 gap-8">
-         
-        <Link href="/query" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-ngram.jpg"
-                alt="query"
-                className="w-32 h-32"
-              />
-              <p>Custom Query</p>
-            </div>
-          </Link>
- 
-          
-          <Link href="/ngram" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-ngram.jpg"
-                alt="N-gram"
-                className="w-32 h-32"
-              />
-              <p>N-gram Visualization</p>
-            </div>
-          </Link>
-
-          <Link href="/topic" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-topic.jpg"
-                alt="Topic Modeling"
-                className="w-32 h-32"
-              />
-              <p>Topic Modeling</p>
-            </div>
-          </Link>
-
-       
+    <div style={homePageStyle}>
+      {!userId ? (
+        <LoginSignup onLogin={handleSetUserId} />
+      ) : (
+        <div style={contentContainerStyle}>
+          <div style={pageStyle}>
+            <QueryPage userId={userId} />
+          </div>
+          <div style={pageStyle}>
+            <NgramPage userId={userId} />
+          </div>
         </div>
-      </main>
-      
+      )}
     </div>
   );
 }
