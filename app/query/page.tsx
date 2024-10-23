@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, CSSProperties } from 'react';
 import { BACKEND_IP } from '../config';
 
 type QueryPageProps = {
@@ -13,10 +13,10 @@ interface QueryResponseItem {
   country: string;
   date: string;
   group: string;
-  num_comments: number;
+  num_comments?: number;
   text: string;
   time_delta: number;
-  title: string;
+  title?: string;
   url: string;
 }
 
@@ -25,7 +25,12 @@ export default function QueryPage({ userId }: QueryPageProps) {
   const [startDate, setStartDate] = useState('2010-01-01');
   const [endDate, setEndDate] = useState('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState('');
+  const [groupInput, setGroupInput] = useState('');
+  const [numComments, setNumComments] = useState<number>(-1);
+  const [postOrComment, setPostOrComment] = useState('posts');
+  const [numDocuments, setNumDocuments] = useState(50);
   const [queryName, setQueryName] = useState('');
   const [savedQueries, setSavedQueries] = useState<any[]>([]);
   const [selectedQuery, setSelectedQuery] = useState<string>('');
@@ -62,27 +67,33 @@ export default function QueryPage({ userId }: QueryPageProps) {
     setShowTable(false);
     setItemsToShow(10);
 
-    const encodedKeywords =
-      keywords.length > 0
-        ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
-        : 'all';
+    const encodedKeywords = keywords.length > 0
+      ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
+      : 'all';
+    const encodedGroups = groups.length > 0
+      ? groups.map((group) => encodeURIComponent(group)).join(',')
+      : 'all';
 
     const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-    const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(
-      userId
-    )}&country=${encodeURIComponent(
+    const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(userId)}&country=${encodeURIComponent(
       country
-    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=all&num_comments=-1&post_or_comment=posts&num_documents=50`;
+    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
 
     try {
       const res = await fetch(url);
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
-      setResponse(data.response);
+
+      // Set default values for missing fields
+      const processedResponse = data.response.map((item: QueryResponseItem) => ({
+        ...item,
+        title: item.title || '.',
+        num_comments: item.num_comments !== undefined ? item.num_comments : 0,
+      }));
+
+      setResponse(processedResponse);
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {
@@ -108,6 +119,10 @@ export default function QueryPage({ userId }: QueryPageProps) {
         startDate,
         endDate,
         keywords,
+        groups,
+        numComments,
+        postOrComment,
+        numDocuments,
       },
     };
 
@@ -120,10 +135,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
         body: JSON.stringify(saveParams),
       });
 
-      if (!res.ok) {
-        throw new Error(`Server error: ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       alert('Query saved successfully.');
       setQueryName('');
     } catch (err: any) {
@@ -138,24 +150,42 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
     const selectedQuery = savedQueries.find((query) => query._id === queryId);
     if (selectedQuery) {
-      const { country, startDate, endDate, keywords } = selectedQuery.content;
+      const {
+        country,
+        startDate,
+        endDate,
+        keywords,
+        groups,
+        numComments,
+        postOrComment,
+        numDocuments,
+      } = selectedQuery.content;
+
       setCountry(country || 'USA');
       setStartDate(startDate || '2010-01-01');
       setEndDate(endDate || '2024-03-01');
       setKeywords(keywords || []);
+      setGroups(groups || []);
+      setNumComments(numComments !== undefined ? numComments : -1);
+      setPostOrComment(postOrComment || 'posts');
+      setNumDocuments(numDocuments || 50);
     }
   };
 
-  const handleKeywordAdd = (event: React.FormEvent) => {
-    event.preventDefault();
-    const trimmedKeyword = keywordInput.trim();
-    if (trimmedKeyword !== '') {
-      setKeywords([...keywords, trimmedKeyword]);
+  const handleKeywordAdd = () => {
+    if (keywordInput.trim() !== '') {
+      setKeywords((prev) => [...prev, keywordInput.trim()]);
       setKeywordInput('');
     }
   };
 
-  // Handle displaying the table
+  const handleGroupAdd = () => {
+    if (groupInput.trim() !== '') {
+      setGroups((prev) => [...prev, groupInput.trim()]);
+      setGroupInput('');
+    }
+  };
+
   const handleShowTable = () => {
     if (response) {
       setDisplayedData(response.slice(0, itemsToShow));
@@ -163,14 +193,12 @@ export default function QueryPage({ userId }: QueryPageProps) {
     }
   };
 
-  // **New Function to Hide the Table**
   const handleHideTable = () => {
     setShowTable(false);
     setDisplayedData([]);
     setItemsToShow(10);
   };
 
-  // Handle loading more data
   const handleLoadMore = () => {
     if (response) {
       const newItemsToShow = itemsToShow + 10;
@@ -179,50 +207,46 @@ export default function QueryPage({ userId }: QueryPageProps) {
     }
   };
 
-  // Handle saving the data table as CSV
   const handleSaveTable = () => {
     if (!response || response.length === 0) {
       alert('No data to save.');
       return;
     }
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [
-        ['ID', 'Author', 'Country', 'Date', 'Group', 'Comments', 'Title', 'Text', 'URL'],
-        ...response.map((item) => [
-          item._id,
-          item.author,
-          item.country,
-          new Date(item.date).toLocaleDateString(),
-          item.group,
-          item.num_comments,
-          `"${item.title.replace(/"/g, '""')}"`, // Escape quotes in title
-          `"${item.text.replace(/"/g, '""')}"`, // Escape quotes in text
-          item.url,
-        ]),
-      ]
-        .map((e) => e.join(','))
-        .join('\n');
+    const csvContent = [
+      ['ID', 'Author', 'Country', 'Date', 'Group', 'Comments', 'Title', 'Text', 'URL'],
+      ...response.map((item) => [
+        item._id,
+        item.author,
+        item.country,
+        new Date(item.date).toLocaleDateString(),
+        item.group,
+        item.num_comments,
+        `"${(item.title ?? '').replace(/"/g, '""')}"`,
+        `"${item.text.replace(/"/g, '""')}"`,
+        item.url,
+      ]),
+    ]
+      .map((e) => e.join(','))
+      .join('\n');
 
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = URL.createObjectURL(blob);
     link.setAttribute('download', 'query_results.csv');
-    document.body.appendChild(link); // Required for FF
-
+    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const tableStyle: React.CSSProperties = {
+  const tableStyle: CSSProperties = {
     width: '100%',
     borderCollapse: 'collapse',
     marginTop: '20px',
     border: '1px solid #ccc',
   };
 
-  const thTdStyle: React.CSSProperties = {
+  const thTdStyle: CSSProperties = {
     border: '1px solid #ccc',
     padding: '8px',
     textAlign: 'left',
@@ -233,6 +257,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
       <form onSubmit={handleSubmit} className="query-form">
         <h2>Custom Query</h2>
 
+        {/* Country Selection */}
         <div className="form-group">
           <label htmlFor="country">Country:</label>
           <select
@@ -240,12 +265,6 @@ export default function QueryPage({ userId }: QueryPageProps) {
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             required
-            style={{
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              marginTop: '5px',
-            }}
           >
             <option value="" disabled>
               Select a country
@@ -255,6 +274,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
           </select>
         </div>
 
+        {/* Start Date */}
         <div className="form-group">
           <label htmlFor="startDate">Start Date:</label>
           <input
@@ -266,6 +286,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
           />
         </div>
 
+        {/* End Date */}
         <div className="form-group">
           <label htmlFor="endDate">End Date:</label>
           <input
@@ -277,6 +298,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
           />
         </div>
 
+        {/* Keywords Input */}
         <div className="form-group">
           <label htmlFor="keywords">Keywords:</label>
           <div className="input-group">
@@ -293,11 +315,79 @@ export default function QueryPage({ userId }: QueryPageProps) {
           </div>
           <ul className="keyword-list">
             {keywords.map((keyword, index) => (
-              <li key={index}>{keyword}</li>
+              <li key={index}>
+                {keyword}
+                <button type="button" onClick={() => setKeywords(keywords.filter((_, i) => i !== index))}>
+                  Remove
+                </button>
+              </li>
             ))}
           </ul>
         </div>
 
+        {/* Groups Input */}
+        <div className="form-group">
+          <label htmlFor="groups">Groups:</label>
+          <div className="input-group">
+            <input
+              type="text"
+              id="groups"
+              value={groupInput}
+              onChange={(e) => setGroupInput(e.target.value)}
+              placeholder="Enter a group"
+            />
+            <button type="button" onClick={handleGroupAdd}>
+              Add
+            </button>
+          </div>
+          <ul className="group-list">
+            {groups.map((group, index) => (
+              <li key={index}>
+                {group}
+                <button type="button" onClick={() => setGroups(groups.filter((_, i) => i !== index))}>
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Number of Comments */}
+        <div className="form-group">
+          <label htmlFor="numComments">Number of Comments:</label>
+          <input
+            type="number"
+            id="numComments"
+            value={numComments}
+            onChange={(e) => setNumComments(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Post or Comment */}
+        <div className="form-group">
+          <label htmlFor="postOrComment">Posts or Comments:</label>
+          <select
+            id="postOrComment"
+            value={postOrComment}
+            onChange={(e) => setPostOrComment(e.target.value)}
+          >
+            <option value="posts">Posts</option>
+            <option value="comments">Comments</option>
+          </select>
+        </div>
+
+        {/* Number of Documents */}
+        <div className="form-group">
+          <label htmlFor="numDocuments">Number of Documents:</label>
+          <input
+            type="number"
+            id="numDocuments"
+            value={numDocuments}
+            onChange={(e) => setNumDocuments(parseInt(e.target.value))}
+          />
+        </div>
+
+        {/* Query Name */}
         <div className="form-group">
           <label htmlFor="queryName">Query Name:</label>
           <input
@@ -312,18 +402,20 @@ export default function QueryPage({ userId }: QueryPageProps) {
           </button>
         </div>
 
+        {/* Load Saved Query */}
         <div className="form-group">
           <label htmlFor="loadQuery">Load Saved Query:</label>
           <select id="loadQuery" value={selectedQuery} onChange={handleLoadQuery}>
             <option value="">Select a Query</option>
             {savedQueries.map((query) => (
               <option key={query._id} value={query._id}>
-                {query._id}
+                {query.name}
               </option>
             ))}
           </select>
         </div>
 
+        {/* Submit Button */}
         <div className="form-group buttons">
           <button type="submit" className="submit-button">
             {isLoading ? 'Submitting...' : 'Submit BabyCenter Query'}
@@ -332,8 +424,6 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
         {error && <p className="error">{error}</p>}
       </form>
-
-      {isLoading && <p>Loading...</p>}
 
       {response && (
         <div className="response-buttons">
@@ -375,9 +465,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
                   <td style={thTdStyle}>{item._id}</td>
                   <td style={thTdStyle}>{item.author}</td>
                   <td style={thTdStyle}>{item.country}</td>
-                  <td style={thTdStyle}>
-                    {new Date(item.date).toLocaleDateString()}
-                  </td>
+                  <td style={thTdStyle}>{new Date(item.date).toLocaleDateString()}</td>
                   <td style={thTdStyle}>{item.group}</td>
                   <td style={thTdStyle}>{item.num_comments}</td>
                   <td style={thTdStyle}>{item.title}</td>
@@ -449,17 +537,32 @@ export default function QueryPage({ userId }: QueryPageProps) {
           flex: 1;
         }
 
-        .keyword-list {
+        .keyword-list,
+        .group-list {
           list-style-type: none;
           padding: 0;
           margin-top: 10px;
         }
 
-        .keyword-list li {
+        .keyword-list li,
+        .group-list li {
           background-color: #e9ecef;
           padding: 8px;
           margin-bottom: 5px;
           border-radius: 3px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .keyword-list li button,
+        .group-list li button {
+          background-color: #dc3545;
+          color: #fff;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          cursor: pointer;
         }
 
         .form-group.buttons {
