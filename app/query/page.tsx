@@ -29,7 +29,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
   const [keywordInput, setKeywordInput] = useState('');
   const [groupInput, setGroupInput] = useState('');
   const [numComments, setNumComments] = useState<number>(-1);
-  const [postOrComment, setPostOrComment] = useState('posts');
+  const [postOrComment, setPostOrComment] = useState<string[]>(['posts']); // Updated to handle multiple selections
   const [numDocuments, setNumDocuments] = useState(50);
   const [queryName, setQueryName] = useState('');
   const [savedQueries, setSavedQueries] = useState<any[]>([]);
@@ -67,33 +67,48 @@ export default function QueryPage({ userId }: QueryPageProps) {
     setShowTable(false);
     setItemsToShow(10);
 
-    const encodedKeywords = keywords.length > 0
-      ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
-      : 'all';
-    const encodedGroups = groups.length > 0
-      ? groups.map((group) => encodeURIComponent(group)).join(',')
-      : 'all';
+    const encodedKeywords =
+      keywords.length > 0
+        ? keywords.map((keyword) => encodeURIComponent(keyword)).join(',')
+        : 'all';
+    const encodedGroups =
+      groups.length > 0
+        ? groups.map((group) => encodeURIComponent(group)).join(',')
+        : 'all';
 
     const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt = parseInt(endDate.replace(/-/g, ''), 10);
 
-    const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(userId)}&country=${encodeURIComponent(
-      country
-    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${postOrComment}&num_documents=${numDocuments}`;
-
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data = await res.json();
+      let combinedResponse: QueryResponseItem[] = [];
 
-      // Set default values for missing fields
-      const processedResponse = data.response.map((item: QueryResponseItem) => ({
-        ...item,
-        title: item.title || '.',
-        num_comments: item.num_comments !== undefined ? item.num_comments : 0,
-      }));
+      // Calculate documents per type
+      const numTypesSelected = postOrComment.length;
+      const numDocsPerType = Math.floor(numDocuments / numTypesSelected);
 
-      setResponse(processedResponse);
+      // Perform queries for each selected type
+      for (const type of postOrComment) {
+        const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(
+          userId
+        )}&country=${encodeURIComponent(
+          country
+        )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${type}&num_documents=${numDocsPerType}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        const data = await res.json();
+
+        // Set default values for missing fields
+        const processedResponse = data.response.map((item: QueryResponseItem) => ({
+          ...item,
+          title: item.title || '.',
+          num_comments: item.num_comments !== undefined ? item.num_comments : 0,
+        }));
+
+        combinedResponse = combinedResponse.concat(processedResponse);
+      }
+
+      setResponse(combinedResponse);
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {
@@ -167,7 +182,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
       setKeywords(keywords || []);
       setGroups(groups || []);
       setNumComments(numComments !== undefined ? numComments : -1);
-      setPostOrComment(postOrComment || 'posts');
+      setPostOrComment(postOrComment || ['posts']);
       setNumDocuments(numDocuments || 50);
     }
   };
@@ -237,6 +252,17 @@ export default function QueryPage({ userId }: QueryPageProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handlePostOrCommentChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setPostOrComment((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      } else {
+        return [...prev, value];
+      }
+    });
   };
 
   const tableStyle: CSSProperties = {
@@ -317,7 +343,10 @@ export default function QueryPage({ userId }: QueryPageProps) {
             {keywords.map((keyword, index) => (
               <li key={index}>
                 {keyword}
-                <button type="button" onClick={() => setKeywords(keywords.filter((_, i) => i !== index))}>
+                <button
+                  type="button"
+                  onClick={() => setKeywords(keywords.filter((_, i) => i !== index))}
+                >
                   Remove
                 </button>
               </li>
@@ -344,7 +373,10 @@ export default function QueryPage({ userId }: QueryPageProps) {
             {groups.map((group, index) => (
               <li key={index}>
                 {group}
-                <button type="button" onClick={() => setGroups(groups.filter((_, i) => i !== index))}>
+                <button
+                  type="button"
+                  onClick={() => setGroups(groups.filter((_, i) => i !== index))}
+                >
                   Remove
                 </button>
               </li>
@@ -365,15 +397,27 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
         {/* Post or Comment */}
         <div className="form-group">
-          <label htmlFor="postOrComment">Posts or Comments:</label>
-          <select
-            id="postOrComment"
-            value={postOrComment}
-            onChange={(e) => setPostOrComment(e.target.value)}
-          >
-            <option value="posts">Posts</option>
-            <option value="comments">Comments</option>
-          </select>
+          <label>Posts or Comments:</label>
+          <div className="checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                value="posts"
+                checked={postOrComment.includes('posts')}
+                onChange={handlePostOrCommentChange}
+              />
+              Posts
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                value="comments"
+                checked={postOrComment.includes('comments')}
+                onChange={handlePostOrCommentChange}
+              />
+              Comments
+            </label>
+          </div>
         </div>
 
         {/* Number of Documents */}
@@ -535,6 +579,18 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
         .input-group input {
           flex: 1;
+        }
+
+        .checkbox-group {
+          display: flex;
+          gap: 20px;
+          margin-top: 10px;
+        }
+
+        .checkbox-group label {
+          display: flex;
+          align-items: center;
+          font-weight: normal;
         }
 
         .keyword-list,

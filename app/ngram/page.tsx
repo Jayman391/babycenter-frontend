@@ -179,7 +179,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
       {response && (
         <div className="response">
           <h3>N-Gram Data:</h3>
-          {/* <pre>{JSON.stringify(response, null, 2)}</pre> */}
+          <pre>{JSON.stringify(response, null, 2)}</pre> 
         </div>
       )}
 
