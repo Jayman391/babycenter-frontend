@@ -19,6 +19,9 @@ export default function NgramPage({ userId }: NgramPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // New state variables for controlling the display of results
+  const [showResults, setShowResults] = useState(false);
+
   useEffect(() => {
     const fetchSavedNgrams = async () => {
       const url = `${BACKEND_IP}/load?computed_type=ngram&user_id=${encodeURIComponent(userId)}`;
@@ -32,12 +35,13 @@ export default function NgramPage({ userId }: NgramPageProps) {
       }
     };
     fetchSavedNgrams();
-  }, []);
+  }, [userId]);
 
   const fetchNgramData = async () => {
     setIsLoading(true);
     setError(null);
     setResponse(null);
+    setShowResults(false); // Reset showResults when fetching new data
 
     const encodedKeywords = keywords.map((k) => encodeURIComponent(k)).join(',') || 'all';
     const startDateInt = parseInt(startDate.replace(/-/g, ''), 10);
@@ -108,19 +112,57 @@ export default function NgramPage({ userId }: NgramPageProps) {
     }
   };
 
+  // New handlers for showing/hiding results and saving data
+  const handleShowResults = () => {
+    setShowResults(true);
+  };
+
+  const handleHideResults = () => {
+    setShowResults(false);
+  };
+
+  const handleSaveData = () => {
+    if (!response || Object.keys(response).length === 0) {
+      alert('No data to save.');
+      return;
+    }
+
+    // Save the response data as a JSON file
+    const jsonString = JSON.stringify(response, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', 'ngram_results.json');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="ngram-page" style={{color : 'black'}}>
+    <div className="ngram-page" style={{ color: 'black' }}>
       <form className="ngram-form" onSubmit={(e) => e.preventDefault()}>
         <h2>N-Gram Visualization</h2>
 
         <div className="form-group">
           <label htmlFor="startDate">Start Date:</label>
-          <input type="date" id="startDate" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+          <input
+            type="date"
+            id="startDate"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            required
+          />
         </div>
 
         <div className="form-group">
           <label htmlFor="endDate">End Date:</label>
-          <input type="date" id="endDate" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+          <input
+            type="date"
+            id="endDate"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            required
+          />
         </div>
 
         <div className="form-group">
@@ -170,16 +212,34 @@ export default function NgramPage({ userId }: NgramPageProps) {
 
         <div className="form-group buttons">
           <button onClick={fetchNgramData} className="submit-button">
-            {isLoading ? 'Loading...' : 'Submit N-gram Query'}</button>
+            {isLoading ? 'Loading...' : 'Submit N-gram Query'}
+          </button>
         </div>
 
         {error && <p className="error">{error}</p>}
       </form>
 
       {response && (
+        <div className="response-buttons">
+          {!showResults ? (
+            <button onClick={handleShowResults} className="show-results-button">
+              Show Results
+            </button>
+          ) : (
+            <button onClick={handleHideResults} className="hide-results-button">
+              Hide Results
+            </button>
+          )}
+          <button onClick={handleSaveData} className="save-data-button">
+            Save Data
+          </button>
+        </div>
+      )}
+
+      {showResults && response && (
         <div className="response">
           <h3>N-Gram Data:</h3>
-          <pre>{JSON.stringify(response, null, 2)}</pre> 
+          <pre>{JSON.stringify(response, null, 2)}</pre>
         </div>
       )}
 
@@ -224,12 +284,6 @@ export default function NgramPage({ userId }: NgramPageProps) {
           box-sizing: border-box;
         }
 
-        .form-group buttons {
-          display: flex;
-          justify-content: center;
-          margin-top: 20px;
-        }
-
         .input-group {
           display: flex;
           gap: 10px;
@@ -250,10 +304,37 @@ export default function NgramPage({ userId }: NgramPageProps) {
           margin-bottom: 5px;
         }
 
-        .buttons {
+        .form-group.buttons {
           display: flex;
           justify-content: center;
           margin-top: 20px;
+        }
+
+        .submit-button,
+        .show-results-button,
+        .hide-results-button,
+        .save-data-button {
+          padding: 10px 15px;
+          background-color: #007bff;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+          margin-right: 10px;
+        }
+
+        .submit-button:hover,
+        .show-results-button:hover,
+        .hide-results-button:hover,
+        .save-data-button:hover {
+          background-color: #0069d9;
+        }
+
+        .response-buttons {
+          margin-top: 20px;
+          display: flex;
+          gap: 10px;
+          justify-content: center;
         }
 
         .response {
@@ -261,19 +342,6 @@ export default function NgramPage({ userId }: NgramPageProps) {
           padding: 15px;
           background-color: #f1f1f1;
           border-radius: 8px;
-        }
-
-        .submit-button {
-          padding: 10px 15px;
-          background-color: #007bff;
-          color: #fff;
-          border: none;
-          border-radius: 3px;
-          cursor: pointer;
-        }
-
-        .submit-button:hover {
-          background-color: #0069d9;
         }
 
         .error {
