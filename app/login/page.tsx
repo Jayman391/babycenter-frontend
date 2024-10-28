@@ -50,7 +50,7 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
         }
       } else {
         // Existing login logic
-        const loadUrl = `${BACKEND_IP}/load?computed_type=user&name=${encodeURIComponent(userId)}`;
+        const loadUrl = `${BACKEND_IP}/load?computed_type=user&user_id=${encodeURIComponent(userId)}`;
   
         const res = await fetch(loadUrl);
         const data = await res.json();

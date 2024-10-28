@@ -21,7 +21,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
 
   useEffect(() => {
     const fetchSavedNgrams = async () => {
-      const url = `${BACKEND_IP}/load?computed_type=ngram&name=all`;
+      const url = `${BACKEND_IP}/load?computed_type=ngram&user_id=${encodeURIComponent(userId)}`;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -77,7 +77,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
     }
     const saveParams = {
       type: 'ngram',
-      _id: `${userId}-${ngramName}`,
+      _id: `${userId}-ngram-${ngramName}`,
       content: { userId, startDate, endDate, keywords },
     };
 
@@ -162,7 +162,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
             <option value="">Select a Ngram Analysis</option>
             {savedNgrams.map((ngram) => (
               <option key={ngram._id} value={ngram._id}>
-                {ngram._id}
+                {ngram._id.match(/-(\w+)$/)[1]}
               </option>
             ))}
           </select>

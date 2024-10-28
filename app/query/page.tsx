@@ -44,7 +44,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
   // Fetch saved queries on mount
   useEffect(() => {
     const fetchSavedQueries = async () => {
-      const url = `${BACKEND_IP}/load?computed_type=query&name=${encodeURIComponent(userId)}`;
+      const url = `${BACKEND_IP}/load?computed_type=query&user_id=${encodeURIComponent(userId)}`;
       try {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
@@ -127,7 +127,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
     const saveParams = {
       type: 'query',
       name: queryName,
-      _id: `${userId}-${queryName}`,
+      _id: `${userId}-query-${queryName}`,
       content: {
         userId,
         country,
@@ -453,7 +453,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
             <option value="">Select a Query</option>
             {savedQueries.map((query) => (
               <option key={query._id} value={query._id}>
-                {query.name}
+                {query._id.match(/-(\w+)$/)[1]}
               </option>
             ))}
           </select>
@@ -531,163 +531,168 @@ export default function QueryPage({ userId }: QueryPageProps) {
         </div>
       )}
 
-      <style jsx>{`
-        .query-page {
-          width: 100%;
-          margin: 0;
-          padding: 20px;
-          font-family: Arial, sans-serif;
-        }
+  <style jsx>{`
+    .query-page {
+      width: 100%;
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
 
-        .query-form {
-          background-color: #f9f9f9;
-          padding: 20px;
-          border-radius: 5px;
-        }
+    .query-form {
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 5px;
+      max-width: 800px;
+      margin: 0 auto; /* This centers the form */
+    }
 
-        .query-form h2 {
-          text-align: center;
-          margin-bottom: 20px;
-        }
+    .query-form h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-        .form-group {
-          margin-bottom: 15px;
-          width: 100%;
-        }
+    .form-group {
+      margin-bottom: 15px;
+      width: 100%;
+    }
 
-        .form-group label {
-          display: block;
-          font-weight: bold;
-          margin-bottom: 5px;
-        }
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
 
-        .form-group input,
-        .form-group select {
-          width: 100%;
-          padding: 8px;
-          margin-top: 5px;
-          box-sizing: border-box;
-          border: 1px solid #ccc;
-          border-radius: 3px;
-        }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
 
-        .input-group {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-        .input-group input {
-          flex: 1;
-        }
+    .input-group input {
+      flex: 1;
+    }
 
-        .checkbox-group {
-          display: flex;
-          gap: 20px;
-          margin-top: 10px;
-        }
+    .checkbox-group {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
 
-        .checkbox-group label {
-          display: flex;
-          align-items: center;
-          font-weight: normal;
-        }
+    .checkbox-group label {
+      display: flex;
+      align-items: center;
+      font-weight: normal;
+    }
 
-        .keyword-list,
-        .group-list {
-          list-style-type: none;
-          padding: 0;
-          margin-top: 10px;
-        }
+    .keyword-list,
+    .group-list {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 10px;
+    }
 
-        .keyword-list li,
-        .group-list li {
-          background-color: #e9ecef;
-          padding: 8px;
-          margin-bottom: 5px;
-          border-radius: 3px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
+    .keyword-list li,
+    .group-list li {
+      background-color: #e9ecef;
+      padding: 8px;
+      margin-bottom: 5px;
+      border-radius: 3px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .keyword-list li button,
-        .group-list li button {
-          background-color: #dc3545;
-          color: #fff;
-          border: none;
-          padding: 5px 10px;
-          border-radius: 3px;
-          cursor: pointer;
-        }
+    .keyword-list li button,
+    .group-list li button {
+      background-color: #dc3545;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
 
-        .form-group.buttons {
-          display: flex;
-          justify-content: center;
-          margin-top: 20px;
-        }
+    .form-group.buttons {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
 
-        .submit-button,
-        .show-table-button,
-        .hide-table-button,
-        .save-table-button,
-        .load-more-button {
-          padding: 10px 15px;
-          background-color: #007bff;
-          color: #fff;
-          border: none;
-          border-radius: 3px;
-          cursor: pointer;
-          margin-right: 10px;
-        }
+    .submit-button,
+    .show-table-button,
+    .hide-table-button,
+    .save-table-button,
+    .load-more-button {
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
 
-        .submit-button:hover,
-        .show-table-button:hover,
-        .hide-table-button:hover,
-        .save-table-button:hover,
-        .load-more-button:hover {
-          background-color: #0069d9;
-        }
+    .submit-button:hover,
+    .show-table-button:hover,
+    .hide-table-button:hover,
+    .save-table-button:hover,
+    .load-more-button:hover {
+      background-color: #0069d9;
+    }
 
-        .error {
-          margin-top: 20px;
-          color: #dc3545;
-          text-align: center;
-        }
+    .error {
+      margin-top: 20px;
+      color: #dc3545;
+      text-align: center;
+    }
 
-        .response-buttons {
-          margin-top: 20px;
-          display: flex;
-          gap: 10px;
-        }
+    .response-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center; /* Center the response buttons */
+    }
 
-        .response {
-          margin-top: 30px;
-          padding: 15px;
-          border-radius: 5px;
-        }
+    .response {
+      width: 100%;
+      margin-top: 30px;
+      padding: 15px;
+      border-radius: 5px;
+    }
 
-        .response h3 {
-          margin-bottom: 10px;
-        }
+    .response h3 {
+      margin-bottom: 10px;
+    }
 
-        table {
-          border-collapse: collapse;
-          width: 100%;
-          margin-top: 20px;
-        }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
 
-        th,
-        td {
-          border: 1px solid #ccc;
-          padding: 8px;
-          text-align: left;
-        }
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
 
-        th {
-          background-color: #f2f2f2;
-        }
-      `}</style>
+    th {
+      background-color: #f2f2f2;
+    }
+  `}</style>
+
     </div>
   );
 }
