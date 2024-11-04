@@ -18,7 +18,7 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
     setError(null);
   
     if (!userId || !password) {
-      setError('userId and password are required.');
+      setError('UserId and password are required.');
       return;
     }
   
@@ -26,8 +26,8 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
       if (isSignup) {
         const saveUrl = `${BACKEND_IP}/save`;
         const saveParams = {
-          type: 'user', // Changed _id to userId based on possible backend requirement
-          _id : userId,
+          type: 'user',
+          _id: userId,
           content: { password, userId },
         };
   
@@ -38,7 +38,7 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
         });
   
         const data = await res.json();
-        console.log('Backend Response:', data); // Added log for debugging
+        console.log('Backend Response:', data);  // Debugging
   
         if (!res.ok) throw new Error(data.message || `Server error: ${res.status}`);
   
@@ -49,12 +49,11 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
           throw new Error(data.message || 'Error during signup.');
         }
       } else {
-        // Existing login logic
         const loadUrl = `${BACKEND_IP}/load?computed_type=user&user_id=${encodeURIComponent(userId)}`;
   
         const res = await fetch(loadUrl);
         const data = await res.json();
-        console.log('Backend Response:', data); // Added log for debugging
+        console.log('Backend Response:', data);  // Debugging
   
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
   
@@ -70,11 +69,12 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
           throw new Error('User does not exist.');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error during login/signup:', err);
-      setError(err.message || 'Error during login/signup. Please try again.');
+      setError((err as Error).message || 'Error during login/signup. Please try again.');
     }
   };
+  
   
 
   return (

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { BACKEND_IP } from '../config';
+import * as d3 from 'd3';
 
 type NgramPageProps = {
   userId: string;
@@ -138,6 +139,171 @@ export default function NgramPage({ userId }: NgramPageProps) {
     document.body.removeChild(link);
   };
 
+  const ngramViz = (responseData: any) => {
+    // Extract data
+    const data = responseData;
+    const full_corpus = data['full_corpus'];
+    const full_ranks = full_corpus['1-gram']['ranks'];
+  
+    console.log(full_ranks);
+  
+    // Convert full_ranks object into an array of objects suitable for D3
+    interface NgramData {
+      key: string;
+      value: number;
+      x?: number;
+      y?: number;
+      fx?: number | null;
+      fy?: number | null;
+    }
+  
+    const dataArray: NgramData[] = Object.keys(full_ranks)
+      .map((key) => ({
+        key: key,
+        value: full_ranks[key],
+      }))
+      .filter((d) => d.value <= 200); // Exclude values higher than 200
+  
+    // Set the base dimensions for the visualization
+    const width = 800;
+    const height = 800;
+  
+    // Remove any existing SVG to prevent duplicates
+    d3.select('#ngram-viz').select('svg').remove();
+  
+    // Create SVG container and make it responsive
+    const svg = d3
+      .select('#ngram-viz')
+      .append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('width', '100%')
+      .style('height', '100%');
+  
+    // Define size scale based on data (higher-ranked words are larger)
+    const size = d3
+      .scalePow()
+      .exponent(0.25)
+      .domain(d3.extent(dataArray, (d) => d.value) as [number, number])
+      .range([60, 10]); // Larger size for lower rank values (higher-ranked words)
+  
+    // Define color scale
+    const color = d3
+      .scaleSequential(d3.interpolateBlues)
+      .domain(d3.extent(dataArray, (d) => d.value) as [number, number]);
+  
+    // Create a tooltip appended to the body
+    const Tooltip = d3
+      .select('body')
+      .append('div')
+      .style('opacity', 0)
+      .attr('class', 'tooltip')
+      .style('background-color', 'white') // Ensure background is white
+      .style('border', 'solid 2px')
+      .style('border-radius', '5px')
+      .style('padding', '5px')
+      .style('position', 'absolute')
+      .style('z-index', '10')
+      .style('color', 'black'); // Set text color to black
+  
+    // Tooltip mouse event functions
+    const mouseover = function (this: any, event: any, d: NgramData) {
+      Tooltip.style('opacity', 1);
+      d3.select(this).attr('stroke-width', 2);
+    };
+  
+    const mousemove = function (event: any, d: NgramData) {
+      Tooltip.html(`<u>${d.key}</u><br>Rank: ${d.value}`)
+        .style('left', event.pageX + 20 + 'px')
+        .style('top', event.pageY - 30 + 'px');
+    };
+  
+    const mouseleave = function (this: any, event: any, d: NgramData) {
+      Tooltip.style('opacity', 0);
+      d3.select(this).attr('stroke-width', 1);
+    };
+  
+    
+  
+    // Initialize the circles with opacity set to 0
+    const node = svg
+      .append('g')
+      .selectAll('circle')
+      .data(dataArray)
+      .join('circle')
+      .attr('class', 'node')
+      .attr('r', (d) => size(d.value))
+      .attr('cx', width / 2)
+      .attr('cy', height / 2)
+      .style('fill', (d) => color(d.value))
+      .style('fill-opacity', 0.8)
+      .attr('stroke', 'black')
+      .style('stroke-width', 1)
+      .style('opacity', 0) // Set initial opacity to 0
+      .on('mouseover', mouseover)
+      .on('mousemove', mousemove)
+      .on('mouseleave', mouseleave)
+      .on('click', (event, d) => {
+        // On click, show a line chart of the counts over time for that ngram
+        // Implement your line chart logic here
+        console.log(`Clicked on ngram: ${d.key}`);
+      })
+      
+  
+    // Define a radial scale to position nodes based on their value
+    const minValue = d3.min(dataArray, (d) => d.value);
+    const maxValue = d3.max(dataArray, (d) => d.value);
+  
+    const radialScale = d3
+      .scaleLinear()
+      .domain([minValue!, maxValue!]) // [lowest rank, highest rank]
+      .range([0, width / 2 - 60]); // Center to outer edge minus max radius
+  
+    // Force simulation with adjusted parameters
+    interface SimulationNodeDatum extends NgramData {
+      value: number;
+    }
+  
+    const simulation = d3
+      .forceSimulation<SimulationNodeDatum>()
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('charge', d3.forceManyBody().strength(0.5))
+      .force(
+        'radial',
+        d3
+          .forceRadial(
+            (d) => radialScale(d.value),
+            width / 2,
+            height / 2
+          )
+          .strength(1)
+      )
+      .force(
+        'collide',
+        d3
+          .forceCollide()
+          .strength(1)
+          .radius((d) => size(d.value) + 1)
+          .iterations(1)
+      );
+  
+    simulation
+      .nodes(dataArray)
+      .on('tick', () => {
+        node
+          .attr('cx', (d) => (d.x = Math.max(size(d.value), Math.min(width - size(d.value), d.x!))))
+          .attr('cy', (d) => (d.y = Math.max(size(d.value), Math.min(height - size(d.value), d.y!))));
+      })
+      .on('end', () => {
+        // Transition nodes to full opacity when simulation ends
+        node.transition().duration(500).style('opacity', 1);
+      });
+  
+    
+  };
+  
+  
+
   return (
     <div className="ngram-page" style={{ color: 'black' }}>
       <form className="ngram-form" onSubmit={(e) => e.preventDefault()}>
@@ -242,6 +408,14 @@ export default function NgramPage({ userId }: NgramPageProps) {
           <pre>{JSON.stringify(response, null, 2)}</pre>
         </div>
       )}
+
+      <div
+        id="ngram-viz"
+        style={{ width: '100%', height: '600px', position: 'relative' }}
+      >
+        {response && ngramViz(response)}
+      </div>
+      
 
       <style jsx>{`
         .ngram-page {
