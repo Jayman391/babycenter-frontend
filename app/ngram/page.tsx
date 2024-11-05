@@ -19,6 +19,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
   const [response, setResponse] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedNgrams, setSelectedNgrams] = useState<string[]>([]);
 
   // New state variables for controlling the display of results
   const [showResults, setShowResults] = useState(false);
@@ -55,6 +56,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data = await res.json();
       setResponse(data.content);
+      setSelectedNgrams([]); // Reset selectedNgrams when new data is fetched
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {
@@ -144,9 +146,9 @@ export default function NgramPage({ userId }: NgramPageProps) {
     const data = responseData;
     const full_corpus = data['full_corpus'];
     const full_ranks = full_corpus['1-gram']['ranks'];
-  
+
     console.log(full_ranks);
-  
+
     // Convert full_ranks object into an array of objects suitable for D3
     interface NgramData {
       key: string;
@@ -156,21 +158,21 @@ export default function NgramPage({ userId }: NgramPageProps) {
       fx?: number | null;
       fy?: number | null;
     }
-  
+
     const dataArray: NgramData[] = Object.keys(full_ranks)
       .map((key) => ({
         key: key,
         value: full_ranks[key],
       }))
       .filter((d) => d.value <= 200); // Exclude values higher than 200
-  
+
     // Set the base dimensions for the visualization
     const width = 800;
     const height = 800;
-  
+
     // Remove any existing SVG to prevent duplicates
     d3.select('#ngram-viz').select('svg').remove();
-  
+
     // Create SVG container and make it responsive
     const svg = d3
       .select('#ngram-viz')
@@ -179,19 +181,19 @@ export default function NgramPage({ userId }: NgramPageProps) {
       .attr('preserveAspectRatio', 'xMidYMid meet')
       .style('width', '100%')
       .style('height', '100%');
-  
+
     // Define size scale based on data (higher-ranked words are larger)
     const size = d3
       .scalePow()
       .exponent(0.25)
       .domain(d3.extent(dataArray, (d) => d.value) as [number, number])
       .range([60, 10]); // Larger size for lower rank values (higher-ranked words)
-  
+
     // Define color scale
     const color = d3
       .scaleSequential(d3.interpolateBlues)
       .domain(d3.extent(dataArray, (d) => d.value) as [number, number]);
-  
+
     // Create a tooltip appended to the body
     const Tooltip = d3
       .select('body')
@@ -205,26 +207,24 @@ export default function NgramPage({ userId }: NgramPageProps) {
       .style('position', 'absolute')
       .style('z-index', '10')
       .style('color', 'black'); // Set text color to black
-  
+
     // Tooltip mouse event functions
     const mouseover = function (this: any, event: any, d: NgramData) {
       Tooltip.style('opacity', 1);
       d3.select(this).attr('stroke-width', 2);
     };
-  
+
     const mousemove = function (event: any, d: NgramData) {
       Tooltip.html(`<u>${d.key}</u><br>Rank: ${d.value}`)
         .style('left', event.pageX + 20 + 'px')
         .style('top', event.pageY - 30 + 'px');
     };
-  
+
     const mouseleave = function (this: any, event: any, d: NgramData) {
       Tooltip.style('opacity', 0);
       d3.select(this).attr('stroke-width', 1);
     };
-  
-    
-  
+
     // Initialize the circles with opacity set to 0
     const node = svg
       .append('g')
@@ -243,27 +243,38 @@ export default function NgramPage({ userId }: NgramPageProps) {
       .on('mouseover', mouseover)
       .on('mousemove', mousemove)
       .on('mouseleave', mouseleave)
-      .on('click', (event, d) => {
-        // On click, show a line chart of the counts over time for that ngram
-        // Implement your line chart logic here
-        console.log(`Clicked on ngram: ${d.key}`);
-      })
-      
-  
+      .on('click', function (event, d) {
+        // On click, toggle selection and update the time series visualization
+        setSelectedNgrams((prevSelected) => {
+          const index = prevSelected.indexOf(d.key);
+          if (index > -1) {
+            // If already selected, remove it
+            return prevSelected.filter((key) => key !== d.key);
+          } else {
+            // Add to selection
+            return [...prevSelected, d.key];
+          }
+        });
+
+        // Reset hover effect
+        Tooltip.style('opacity', 0);
+        d3.select(this).attr('stroke-width', 1);
+      });
+
     // Define a radial scale to position nodes based on their value
     const minValue = d3.min(dataArray, (d) => d.value);
     const maxValue = d3.max(dataArray, (d) => d.value);
-  
+
     const radialScale = d3
       .scaleLinear()
       .domain([minValue!, maxValue!]) // [lowest rank, highest rank]
       .range([0, width / 2 - 60]); // Center to outer edge minus max radius
-  
+
     // Force simulation with adjusted parameters
     interface SimulationNodeDatum extends NgramData {
       value: number;
     }
-  
+
     const simulation = d3
       .forceSimulation<SimulationNodeDatum>()
       .force('center', d3.forceCenter(width / 2, height / 2))
@@ -286,7 +297,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
           .radius((d) => size(d.value) + 1)
           .iterations(1)
       );
-  
+
     simulation
       .nodes(dataArray)
       .on('tick', () => {
@@ -298,11 +309,165 @@ export default function NgramPage({ userId }: NgramPageProps) {
         // Transition nodes to full opacity when simulation ends
         node.transition().duration(500).style('opacity', 1);
       });
-  
-    
   };
-  
-  
+
+  const ngramTsViz = (ngrams: string[], responseData: any) => {
+    if (ngrams.length === 0) {
+      // If no ngrams are selected, clear the visualization
+      d3.select('#ngram-ts-viz').select('svg').remove();
+      return;
+    }
+
+    const data = responseData['dates'];
+    const dateStrings = Object.keys(data);
+
+    // Sort date strings in ascending order
+    dateStrings.sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+    // Convert date strings to Date objects for plotting
+    const dateObjects = dateStrings.map((dateStr) => new Date(dateStr));
+
+    // Prepare data for each ngram
+    const ngramData = ngrams.map((ngram) => {
+      const ngramValues = dateStrings
+        .map((dateStr, index) => {
+          const rank = data[dateStr]['1-gram']['ranks'][ngram];
+          if (rank !== undefined) {
+            return { date: dateObjects[index], rank: rank };
+          } else {
+            return null;
+          }
+        })
+        .filter((d) => d !== null) as { date: Date; rank: number }[]; // Filter out null values
+      return { ngram: ngram, values: ngramValues };
+    });
+
+    // Set up the SVG canvas dimensions
+    d3.select('#ngram-ts-viz').select('svg').remove();
+    const margin = { top: 20, right: 80, bottom: 30, left: 50 };
+    const width = 800 - margin.left - margin.right;
+    const height = 400 - margin.top - margin.bottom;
+    const svg = d3
+      .select('#ngram-ts-viz')
+      .append('svg')
+      .attr('width', width + margin.left + margin.right)
+      .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    // Set up scales
+    const x = d3
+      .scaleTime()
+      .domain(d3.extent(dateObjects) as [Date, Date])
+      .range([0, width]);
+
+    const y = d3
+      .scaleLinear()
+      .domain([
+        d3.max(ngramData, (ngram) => d3.max(ngram.values, (d) => d.rank))!,
+        0,
+      ])
+      .nice()
+      .range([height, 0]);
+
+    // Define color scale
+    const color = d3.scaleOrdinal(d3.schemeCategory10).domain(ngrams);
+
+    // Add X axis
+    svg
+      .append('g')
+      .attr('transform', `translate(0,${height})`)
+      .call(d3.axisBottom(x));
+
+    // Add Y axis
+    svg.append('g').call(d3.axisLeft(y));
+
+    // Add tooltip
+    const Tooltip = d3
+      .select('body')
+      .append('div')
+      .style('opacity', 0)
+      .attr('class', 'tooltip')
+      .style('background-color', 'white')
+      .style('border', 'solid 1px #ccc')
+      .style('border-radius', '5px')
+      .style('padding', '5px')
+      .style('position', 'absolute')
+      .style('z-index', '10')
+      .style('color', 'black');
+
+    // Define line generator
+    const line = d3
+      .line<{ date: Date; rank: number }>()
+      .x((d) => x(d.date))
+      .y((d) => y(d.rank));
+
+    // Add lines and points for each ngram
+    ngramData.forEach((ngram) => {
+      svg
+        .append('path')
+        .datum(ngram.values)
+        .attr('fill', 'none')
+        .attr('stroke', color(ngram.ngram))
+        .attr('stroke-width', 1.5)
+        .attr('d', line);
+
+      // Add circles at data points
+      svg
+        .selectAll(`.dot-${ngram.ngram}`)
+        .data(ngram.values)
+        .enter()
+        .append('circle')
+        .attr('class', `dot-${ngram.ngram}`)
+        .attr('cx', (d) => x(d.date))
+        .attr('cy', (d) => y(d.rank))
+        .attr('r', 3)
+        .attr('fill', color(ngram.ngram))
+        .on('mouseover', function (event, d) {
+          Tooltip.style('opacity', 1);
+        })
+        .on('mousemove', function (event, d) {
+          Tooltip.html(
+            `<u>${ngram.ngram}</u><br>Date: ${
+              d.date.toISOString().split('T')[0]
+            }<br>Rank: ${d.rank}`
+          )
+            .style('left', event.pageX + 20 + 'px')
+            .style('top', event.pageY - 30 + 'px');
+        })
+        .on('mouseleave', function (event, d) {
+          Tooltip.style('opacity', 0);
+        });
+    });
+
+    // Add legend
+    svg
+      .selectAll('.legend')
+      .data(ngrams)
+      .enter()
+      .append('text')
+      .attr('x', width - margin.right)
+      .attr('y', (d, i) => 20 + i * 20)
+      .attr('fill', (d) => color(d))
+      .text((d) => d)
+      .style('font-size', '12px')
+      .attr('text-anchor', 'end');
+  };
+
+  useEffect(() => {
+    if (response) {
+      ngramViz(response);
+    }
+  }, [response]);
+
+  useEffect(() => {
+    if (response) {
+      ngramTsViz(selectedNgrams, response);
+    } else {
+      // Clear the visualization
+      d3.select('#ngram-ts-viz').select('svg').remove();
+    }
+  }, [selectedNgrams]);
 
   return (
     <div className="ngram-page" style={{ color: 'black' }}>
@@ -412,10 +577,12 @@ export default function NgramPage({ userId }: NgramPageProps) {
       <div
         id="ngram-viz"
         style={{ width: '100%', height: '600px', position: 'relative' }}
-      >
-        {response && ngramViz(response)}
-      </div>
-      
+      ></div>
+
+      <div
+        id="ngram-ts-viz"
+        style={{ width: '100%', height: '600px', position: 'relative', color: 'white' }}
+      ></div>
 
       <style jsx>{`
         .ngram-page {
