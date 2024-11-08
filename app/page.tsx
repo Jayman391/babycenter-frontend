@@ -26,7 +26,7 @@ export default function Home() {
   const contentContainerStyle: CSSProperties = {
     display: 'flex',
     flexDirection: 'column', // Stack elements horizontally
-    width: '80%',
+    width: '100%',
     gap: '20px', // Add space between stacked pages
   };
 

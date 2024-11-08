@@ -543,7 +543,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
       background-color: #f9f9f9;
       padding: 20px;
       border-radius: 5px;
-      max-width: 800px;
+      max-width: 1400px;
       margin: 0 auto; /* This centers the form */
     }
 
