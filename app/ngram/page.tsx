@@ -1,28 +1,17 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BACKEND_IP } from '../config';
 import * as d3 from 'd3';
 
-type NgramPageProps = {
-  userId: string;
-};
+sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
 
-interface SavedNgram {
-  _id: string;
-  content: {
-    userId: string;
-    startDate: string;
-    endDate: string;
-    keywords: string[];
-  };
-}
 
 interface NgramResponseData {
   full_corpus: {
     '1-gram': {
       ranks: { [key: string]: number };
-      counts : { [key: string]: number };
+      counts: { [key: string]: number };
     };
   };
   dates: {
@@ -43,56 +32,21 @@ interface DataArrayElement {
   y?: number;
 }
 
-type SaveParams = {
-  type: string;
-  _id: string;
-  content: {
-    userId: string;
-    startDate: string;
-    endDate: string;
-    keywords: string[];
-  };
-};
-
-export default function NgramPage({ userId }: NgramPageProps) {
+export default function NgramPage() {
   const [startDate, setStartDate] = useState<string>('2010-01-01');
   const [endDate, setEndDate] = useState<string>('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState<string>('');
-  const [ngramName, setNgramName] = useState<string>('');
-  const [savedNgrams, setSavedNgrams] = useState<SavedNgram[]>([]);
-  const [selectedNgram, setSelectedNgram] = useState<string>('');
   const [response, setResponse] = useState<NgramResponseData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedNgrams, setSelectedNgrams] = useState<string[]>([]);
-
-  // New state variables
   const [showResults, setShowResults] = useState<boolean>(false);
   const [rankPercentile, setRankPercentile] = useState<number>(0); // Slider value from 0 to 1
   const [tableNgrams, setTableNgrams] = useState<DataArrayElement[]>([]); // N-grams to display in the table
-
   const [isForceGraphRendered, setIsForceGraphRendered] = useState<boolean>(false);
   const [numNodes, setNumNodes] = useState<number>(250); // Number of nodes for force graph
-
-  useEffect(() => {
-    const fetchSavedNgrams = async () => {
-      const url = `${BACKEND_IP}/load?computed_type=ngram&user_id=${encodeURIComponent(userId)}`;
-      try {
-        const res: Response = await fetch(url);
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-        const data: { content: SavedNgram[] } = await res.json();
-        setSavedNgrams(data.content || []);
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message || 'Error loading saved N-grams.');
-        } else {
-          setError('Unknown error occurred.');
-        }
-      }
-    };
-    fetchSavedNgrams();
-  }, [userId]);
+  const [allResponses, setAllResponses] = useState<NgramResponseData[]>([]);
 
   const fetchNgramData = async () => {
     setIsLoading(true);
@@ -105,15 +59,14 @@ export default function NgramPage({ userId }: NgramPageProps) {
     const startDateInt: number = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt: number = parseInt(endDate.replace(/-/g, ''), 10);
 
-    const url = `${BACKEND_IP}/ngram?user_id=${encodeURIComponent(
-      userId
-    )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
+    const url = `${BACKEND_IP}/ngram?sessionID=${sessionStorage.getItem('sessionID')}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
 
     try {
       const res: Response = await fetch(url);
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       const data: { content: NgramResponseData } = await res.json();
       setResponse(data.content);
+      setAllResponses((prevAllResponses) => [...prevAllResponses, data.content]);
       setSelectedNgrams([]); // Reset selectedNgrams when new data is fetched
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -137,50 +90,6 @@ export default function NgramPage({ userId }: NgramPageProps) {
 
   const handleKeywordDelete = (keywordToRemove: string) => {
     setKeywords(keywords.filter((keyword) => keyword !== keywordToRemove));
-  };
-
-  const handleSaveNgram = async () => {
-    if (!ngramName.trim()) {
-      alert('Please provide a name for your N-gram.');
-      return;
-    }
-    const saveParams: SaveParams = {
-      type: 'ngram',
-      _id: `${userId}-ngram-${ngramName}`,
-      content: { userId, startDate, endDate, keywords },
-    };
-
-    try {
-      const res: Response = await fetch(`${BACKEND_IP}/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saveParams),
-      });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      alert('N-gram saved successfully.');
-      setNgramName('');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message || 'Error saving N-gram.');
-      } else {
-        setError('Unknown error occurred while saving N-gram.');
-      }
-    }
-  };
-
-  const handleLoadNgram = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const ngramId: string = event.target.value;
-    setSelectedNgram(ngramId);
-
-    const selected: SavedNgram | undefined = savedNgrams.find(
-      (ngram) => ngram._id === ngramId
-    );
-    if (selected) {
-      const { startDate, endDate, keywords } = selected.content;
-      setStartDate(startDate || '2010-01-01');
-      setEndDate(endDate || '2024-03-01');
-      setKeywords(keywords || []);
-    }
   };
 
   // New handlers for showing/hiding results and saving data
@@ -454,6 +363,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
       });
   };
 
+  // Time series visualization function remains unchanged
   const ngramTsViz = (
     ngrams: string[],
     responseData: NgramResponseData,
@@ -655,7 +565,7 @@ export default function NgramPage({ userId }: NgramPageProps) {
     }
   }, [selectedNgrams, response]);
 
-  // Functions to save the plots
+  // Functions to save the plots remain unchanged
   const saveNgramViz = () => {
     const svgElement = d3.select('#ngram-viz').select('svg').node();
     if (svgElement) {
@@ -734,30 +644,6 @@ export default function NgramPage({ userId }: NgramPageProps) {
               </li>
             ))}
           </ul>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="ngramName">N-Gram Name:</label>
-          <input
-            type="text"
-            id="ngramName"
-            value={ngramName}
-            onChange={(e) => setNgramName(e.target.value)}
-            placeholder="Enter a name"
-          />
-          <button onClick={handleSaveNgram}>Save N-Gram</button>
-        </div>
-
-        <div className="form-group">
-          <label>Load Saved N-Gram:</label>
-          <select value={selectedNgram} onChange={handleLoadNgram}>
-            <option value="">Select a Ngram Analysis</option>
-            {savedNgrams.map((ngram) => (
-              <option key={ngram._id} value={ngram._id}>
-                {ngram._id.match(/-(\w+)$/)?.[1] || ngram._id}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div className="form-group">

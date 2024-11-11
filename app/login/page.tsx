@@ -27,7 +27,8 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
         const saveUrl = `${BACKEND_IP}/save`;
         const saveParams = {
           type: 'user',
-          _id: userId,
+          id: userId,
+          user_id: userId,
           content: { password, userId },
         };
   
@@ -49,7 +50,7 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
           throw new Error(data.message || 'Error during signup.');
         }
       } else {
-        const loadUrl = `${BACKEND_IP}/load?computed_type=user&user_id=${encodeURIComponent(userId)}`;
+        const loadUrl = `${BACKEND_IP}/load?type=user&user_id=${encodeURIComponent(userId)}`;
   
         const res = await fetch(loadUrl);
         const data = await res.json();
@@ -58,10 +59,12 @@ export default function LoginSignup({ onLogin }: LoginSignupProps) {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
   
         if (data.status === 'success' && data.content.length > 0) {
+          const loginInfo = JSON.parse(data['content']['0']['3']);
           const user = data.content[0];
-          if (user.content.password === password) {
-            sessionStorage.setItem('userId', user._id);
-            onLogin(user._id);
+          if (userId === loginInfo['userId'] && password === loginInfo['password']) {
+            sessionStorage.setItem('userId', loginInfo['userId']);
+            onLogin(loginInfo['userId']);
+            console.log('User logged in:', loginInfo['userId']);
           } else {
             throw new Error('Incorrect password.');
           }

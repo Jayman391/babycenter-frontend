@@ -40,18 +40,14 @@ export default function Home() {
 
   return (
     <div style={homePageStyle}>
-      {!userId ? (
-        <LoginSignup onLogin={handleSetUserId} />
-      ) : (
         <div style={contentContainerStyle}>
           <div style={pageStyle}>
-            <QueryPage userId={userId} />
+            <QueryPage />
           </div>
           <div style={pageStyle}>
-            <NgramPage userId={userId} />
+            <NgramPage />
           </div>
         </div>
-      )}
     </div>
   );
 }

@@ -3,12 +3,10 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { BACKEND_IP } from '../config';
 
-type QueryPageProps = {
-  userId: string;
-};
+sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
 
 interface QueryResponseItem {
-  _id: string;
+  id: string;
   author: string;
   country: string;
   date: string;
@@ -20,7 +18,8 @@ interface QueryResponseItem {
   url: string;
 }
 
-export default function QueryPage({ userId }: QueryPageProps) {
+
+export default function QueryPage() {
   const [country, setCountry] = useState('USA');
   const [startDate, setStartDate] = useState('2010-01-01');
   const [endDate, setEndDate] = useState('2024-03-01');
@@ -31,31 +30,13 @@ export default function QueryPage({ userId }: QueryPageProps) {
   const [numComments, setNumComments] = useState<number>(-1);
   const [postOrComment, setPostOrComment] = useState<string[]>(['posts']); // Updated to handle multiple selections
   const [numDocuments, setNumDocuments] = useState(50);
-  const [queryName, setQueryName] = useState('');
-  const [savedQueries, setSavedQueries] = useState<any[]>([]);
-  const [selectedQuery, setSelectedQuery] = useState<string>('');
   const [response, setResponse] = useState<QueryResponseItem[] | null>(null);
   const [displayedData, setDisplayedData] = useState<QueryResponseItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTable, setShowTable] = useState(false);
   const [itemsToShow, setItemsToShow] = useState(10);
-
-  // Fetch saved queries on mount
-  useEffect(() => {
-    const fetchSavedQueries = async () => {
-      const url = `${BACKEND_IP}/load?computed_type=query&user_id=${encodeURIComponent(userId)}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Server error: ${res.status}`);
-        const data = await res.json();
-        setSavedQueries(data.content || []);
-      } catch (err: any) {
-        setError(err.message || 'Error loading saved queries.');
-      }
-    };
-    fetchSavedQueries();
-  }, [userId]);
+  const [allResponses, setAllResponses] = useState<QueryResponseItem[][]>([]);
 
   // Handle form submission
   const handleSubmit = async (event: React.FormEvent) => {
@@ -88,9 +69,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
 
       // Perform queries for each selected type
       for (const type of postOrComment) {
-        const url = `${BACKEND_IP}/query?user_id=${encodeURIComponent(
-          userId
-        )}&country=${encodeURIComponent(
+        const url = `${BACKEND_IP}/query?sessionID=${sessionStorage.getItem('sessionID')}&country=${encodeURIComponent(
           country
         )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${type}&num_documents=${numDocsPerType}`;
 
@@ -109,81 +88,11 @@ export default function QueryPage({ userId }: QueryPageProps) {
       }
 
       setResponse(combinedResponse);
+      setAllResponses((prevAllResponses) => [...prevAllResponses, combinedResponse]);
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Handle saving a query
-  const handleSaveQuery = async () => {
-    if (!queryName.trim()) {
-      alert('Please provide a name for your query before saving.');
-      return;
-    }
-
-    const saveUrl = `${BACKEND_IP}/save`;
-    const saveParams = {
-      type: 'query',
-      name: queryName,
-      _id: `${userId}-query-${queryName}`,
-      content: {
-        userId,
-        country,
-        startDate,
-        endDate,
-        keywords,
-        groups,
-        numComments,
-        postOrComment,
-        numDocuments,
-      },
-    };
-
-    try {
-      const res = await fetch(saveUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(saveParams),
-      });
-
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      alert('Query saved successfully.');
-      setQueryName('');
-    } catch (err: any) {
-      setError(err.message || 'Error saving query.');
-    }
-  };
-
-  // Handle loading a saved query
-  const handleLoadQuery = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const queryId = event.target.value;
-    setSelectedQuery(queryId);
-
-    const selectedQuery = savedQueries.find((query) => query._id === queryId);
-    if (selectedQuery) {
-      const {
-        country,
-        startDate,
-        endDate,
-        keywords,
-        groups,
-        numComments,
-        postOrComment,
-        numDocuments,
-      } = selectedQuery.content;
-
-      setCountry(country || 'USA');
-      setStartDate(startDate || '2010-01-01');
-      setEndDate(endDate || '2024-03-01');
-      setKeywords(keywords || []);
-      setGroups(groups || []);
-      setNumComments(numComments !== undefined ? numComments : -1);
-      setPostOrComment(postOrComment || ['posts']);
-      setNumDocuments(numDocuments || 50);
     }
   };
 
@@ -231,7 +140,7 @@ export default function QueryPage({ userId }: QueryPageProps) {
     const csvContent = [
       ['ID', 'Author', 'Country', 'Date', 'Group', 'Comments', 'Title', 'Text', 'URL'],
       ...response.map((item) => [
-        item._id,
+        item.id,
         item.author,
         item.country,
         new Date(item.date).toLocaleDateString(),
@@ -431,34 +340,6 @@ export default function QueryPage({ userId }: QueryPageProps) {
           />
         </div>
 
-        {/* Query Name */}
-        <div className="form-group">
-          <label htmlFor="queryName">Query Name:</label>
-          <input
-            type="text"
-            id="queryName"
-            value={queryName}
-            onChange={(e) => setQueryName(e.target.value)}
-            placeholder="Enter a name for your query"
-          />
-          <button type="button" onClick={handleSaveQuery}>
-            Save Query
-          </button>
-        </div>
-
-        {/* Load Saved Query */}
-        <div className="form-group">
-          <label htmlFor="loadQuery">Load Saved Query:</label>
-          <select id="loadQuery" value={selectedQuery} onChange={handleLoadQuery}>
-            <option value="">Select a Query</option>
-            {savedQueries.map((query) => (
-              <option key={query._id} value={query._id}>
-                {query._id.match(/-(\w+)$/)[1]}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Submit Button */}
         <div className="form-group buttons">
           <button type="submit" className="submit-button">
@@ -503,10 +384,10 @@ export default function QueryPage({ userId }: QueryPageProps) {
                 <th style={thTdStyle}>Link</th>
               </tr>
             </thead>
-            <tbody style={{color : 'white'}}>
+            <tbody style={{ color: 'white' }}>
               {displayedData.map((item) => (
-                <tr key={item._id}>
-                  <td style={thTdStyle}>{item._id}</td>
+                <tr key={item.id}>
+                  <td style={thTdStyle}>{item.id}</td>
                   <td style={thTdStyle}>{item.author}</td>
                   <td style={thTdStyle}>{item.country}</td>
                   <td style={thTdStyle}>{new Date(item.date).toLocaleDateString()}</td>
@@ -531,168 +412,167 @@ export default function QueryPage({ userId }: QueryPageProps) {
         </div>
       )}
 
-  <style jsx>{`
-    .query-page {
-      width: 100%;
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-    }
+      <style jsx>{`
+        .query-page {
+          width: 100%;
+          margin: 0;
+          padding: 20px;
+          font-family: Arial, sans-serif;
+        }
 
-    .query-form {
-      background-color: #f9f9f9;
-      padding: 20px;
-      border-radius: 5px;
-      max-width: 1400px;
-      margin: 0 auto; /* This centers the form */
-    }
+        .query-form {
+          background-color: #f9f9f9;
+          padding: 20px;
+          border-radius: 5px;
+          max-width: 1400px;
+          margin: 0 auto; /* This centers the form */
+        }
 
-    .query-form h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
+        .query-form h2 {
+          text-align: center;
+          margin-bottom: 20px;
+        }
 
-    .form-group {
-      margin-bottom: 15px;
-      width: 100%;
-    }
+        .form-group {
+          margin-bottom: 15px;
+          width: 100%;
+        }
 
-    .form-group label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 5px;
-    }
+        .form-group label {
+          display: block;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
 
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-    }
+        .form-group input,
+        .form-group select {
+          width: 100%;
+          padding: 8px;
+          margin-top: 5px;
+          box-sizing: border-box;
+          border: 1px solid #ccc;
+          border-radius: 3px;
+        }
 
-    .input-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+        .input-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
 
-    .input-group input {
-      flex: 1;
-    }
+        .input-group input {
+          flex: 1;
+        }
 
-    .checkbox-group {
-      display: flex;
-      gap: 20px;
-      margin-top: 10px;
-    }
+        .checkbox-group {
+          display: flex;
+          gap: 20px;
+          margin-top: 10px;
+        }
 
-    .checkbox-group label {
-      display: flex;
-      align-items: center;
-      font-weight: normal;
-    }
+        .checkbox-group label {
+          display: flex;
+          align-items: center;
+          font-weight: normal;
+        }
 
-    .keyword-list,
-    .group-list {
-      list-style-type: none;
-      padding: 0;
-      margin-top: 10px;
-    }
+        .keyword-list,
+        .group-list {
+          list-style-type: none;
+          padding: 0;
+          margin-top: 10px;
+        }
 
-    .keyword-list li,
-    .group-list li {
-      background-color: #e9ecef;
-      padding: 8px;
-      margin-bottom: 5px;
-      border-radius: 3px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        .keyword-list li,
+        .group-list li {
+          background-color: #e9ecef;
+          padding: 8px;
+          margin-bottom: 5px;
+          border-radius: 3px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
 
-    .keyword-list li button,
-    .group-list li button {
-      background-color: #dc3545;
-      color: #fff;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 3px;
-      cursor: pointer;
-    }
+        .keyword-list li button,
+        .group-list li button {
+          background-color: #dc3545;
+          color: #fff;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          cursor: pointer;
+        }
 
-    .form-group.buttons {
-      display: flex;
-      justify-content: center;
-      margin-top: 20px;
-    }
+        .form-group.buttons {
+          display: flex;
+          justify-content: center;
+          margin-top: 20px;
+        }
 
-    .submit-button,
-    .show-table-button,
-    .hide-table-button,
-    .save-table-button,
-    .load-more-button {
-      padding: 10px 15px;
-      background-color: #007bff;
-      color: #fff;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      margin-right: 10px;
-    }
+        .submit-button,
+        .show-table-button,
+        .hide-table-button,
+        .save-table-button,
+        .load-more-button {
+          padding: 10px 15px;
+          background-color: #007bff;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+          margin-right: 10px;
+        }
 
-    .submit-button:hover,
-    .show-table-button:hover,
-    .hide-table-button:hover,
-    .save-table-button:hover,
-    .load-more-button:hover {
-      background-color: #0069d9;
-    }
+        .submit-button:hover,
+        .show-table-button:hover,
+        .hide-table-button:hover,
+        .save-table-button:hover,
+        .load-more-button:hover {
+          background-color: #0069d9;
+        }
 
-    .error {
-      margin-top: 20px;
-      color: #dc3545;
-      text-align: center;
-    }
+        .error {
+          margin-top: 20px;
+          color: #dc3545;
+          text-align: center;
+        }
 
-    .response-buttons {
-      margin-top: 20px;
-      display: flex;
-      gap: 10px;
-      justify-content: center; /* Center the response buttons */
-    }
+        .response-buttons {
+          margin-top: 20px;
+          display: flex;
+          gap: 10px;
+          justify-content: center; /* Center the response buttons */
+        }
 
-    .response {
-      width: 100%;
-      margin-top: 30px;
-      padding: 15px;
-      border-radius: 5px;
-    }
+        .response {
+          width: 100%;
+          margin-top: 30px;
+          padding: 15px;
+          border-radius: 5px;
+        }
 
-    .response h3 {
-      margin-bottom: 10px;
-    }
+        .response h3 {
+          margin-bottom: 10px;
+        }
 
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-    }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 20px;
+        }
 
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
+        th,
+        td {
+          border: 1px solid #ccc;
+          padding: 8px;
+          text-align: left;
+        }
 
-    th {
-      background-color: #f2f2f2;
-    }
-  `}</style>
-
+        th {
+          background-color: #f2f2f2;
+        }
+      `}</style>
     </div>
   );
 }
