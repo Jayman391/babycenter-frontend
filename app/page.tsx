@@ -3,7 +3,9 @@
 import React, { useState, useEffect, CSSProperties } from 'react';
 import QueryPage from './query/page';
 import NgramPage from './ngram/page';
-import LoginSignup from './login/page';
+import GroupNgramPage from './group/page';
+
+sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
 
 export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -46,6 +48,9 @@ export default function Home() {
           </div>
           <div style={pageStyle}>
             <NgramPage />
+          </div>
+          <div style={pageStyle}>
+            <GroupNgramPage />
           </div>
         </div>
     </div>

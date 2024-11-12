@@ -3,7 +3,6 @@
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { BACKEND_IP } from '../config';
 
-sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
 
 interface QueryResponseItem {
   id: string;

@@ -4,9 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { BACKEND_IP } from '../config';
 import * as d3 from 'd3';
 
-sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
-
-
 interface NgramResponseData {
   full_corpus: {
     '1-gram': {
