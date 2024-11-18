@@ -21,8 +21,14 @@ interface NgramResponseData {
   };
 }
 
+interface Topic {
+  id: string;
+  groups: string[];
+}
+
+
 export default function GroupNgramPage() {
-  const [topics, setTopics] = useState([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedParent, setSelectedParent] = useState('');
   const [subgroups, setSubgroups] = useState<string[]>([]);
   const [filteredSubgroups, setFilteredSubgroups] = useState<string[]>([]);
@@ -48,9 +54,13 @@ export default function GroupNgramPage() {
     fetchTopics();
   }, []);
 
+  
+
   useEffect(() => {
     if (selectedParent) {
       const parentTopic = topics.find((topic: { id: string }) => topic.id === selectedParent);
+      // make sure parentTopic.groups is not never 
+
       const groups = parentTopic?.groups || [];
       setSubgroups(groups);
       setFilteredSubgroups(groups.slice(0, 25));
@@ -221,7 +231,7 @@ export default function GroupNgramPage() {
       .append('button')
       .text('Save SVG')
       .on('click', function () {
-        const svgElement = container.select('svg').node();
+        const svgElement = container.select('svg').node() as Element;
         const serializer = new XMLSerializer();
         let source = serializer.serializeToString(svgElement);
         // Add name spaces.
@@ -291,7 +301,7 @@ export default function GroupNgramPage() {
       .forceSimulation(data as any)
       .force(
         'x',
-        d3.forceX((d: any) => xScale(d.corpus)).strength(1)
+        d3.forceX((d: any) => xScale(d.corpus) || 0).strength(1) // Ensure xScale always returns a number
       )
       .force(
         'y',
@@ -468,7 +478,7 @@ export default function GroupNgramPage() {
         .text('Save SVG')
         .on('click', function () {
           // Code to save the SVG
-          const svgElement = container.select('svg').node();
+          const svgElement = container.select('svg').node() as Element;
           const serializer = new XMLSerializer();
           let source = serializer.serializeToString(svgElement);
           // Add name spaces.

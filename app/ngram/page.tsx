@@ -302,7 +302,7 @@ export default function NgramPage() {
       .force(
         'radial',
         d3
-          .forceRadial(
+          .forceRadial<DataArrayElement>(
             (d) => radialScale(d.rank),
             width / 2,
             height / 2
@@ -312,7 +312,7 @@ export default function NgramPage() {
       .force(
         'collide',
         d3
-          .forceCollide()
+          .forceCollide<DataArrayElement>()
           .strength(1)
           .radius((d) => size(d.rank) + 1)
           .iterations(1)
@@ -564,7 +564,7 @@ export default function NgramPage() {
 
   // Functions to save the plots remain unchanged
   const saveNgramViz = () => {
-    const svgElement = d3.select('#ngram-viz').select('svg').node();
+    const svgElement = d3.select('#ngram-viz').select('svg').node() as Element;
     if (svgElement) {
       const serializer = new XMLSerializer();
       const svgString = serializer.serializeToString(svgElement);
@@ -579,7 +579,7 @@ export default function NgramPage() {
   };
 
   const saveTimeSeriesViz = () => {
-    const svgElement = d3.select('#ngram-ts-viz').select('svg').node();
+    const svgElement = d3.select('#ngram-ts-viz').select('svg').node() as Element;
     if (svgElement) {
       const serializer = new XMLSerializer();
       const svgString = serializer.serializeToString(svgElement);
