@@ -18,8 +18,7 @@ interface QueryResponseItem {
 }
 
 
-export default function QueryPage() {
-  const [country, setCountry] = useState('USA');
+export default function QueryPage({sessionID}: { sessionID: string }): JSX.Element {  const [country, setCountry] = useState('USA');
   const [startDate, setStartDate] = useState('2010-01-01');
   const [endDate, setEndDate] = useState('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
@@ -68,7 +67,8 @@ export default function QueryPage() {
 
       // Perform queries for each selected type
       for (const type of postOrComment) {
-        const url = `${BACKEND_IP}/query?sessionID=${sessionStorage.getItem('sessionID')}&country=${encodeURIComponent(
+        const url = `${BACKEND_IP}/query?sessionID=${sessionID}&country=${encodeURIComponent(
+
           country
         )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${type}&num_documents=${numDocsPerType}`;
 

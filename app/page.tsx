@@ -5,17 +5,11 @@ import QueryPage from './query/page';
 import NgramPage from './ngram/page';
 import GroupNgramPage from './group/page';
 
-sessionStorage.setItem('sessionID', Math.random().toString()); // Set userId on mount
 
 export default function Home() {
-  const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const storedUserId = sessionStorage.getItem('userId'); // Retrieve userId on mount
-    if (storedUserId) setUserId(storedUserId);
-  }, []);
-
-  const handleSetUserId = (id: string) => setUserId(id);
+  const sessionID = Math.random().toString().substring(7);
+  console.log('Session ID:', sessionID);
 
   const homePageStyle: CSSProperties = {
     display: 'flex',
@@ -44,13 +38,13 @@ export default function Home() {
     <div style={homePageStyle}>
         <div style={contentContainerStyle}>
           <div style={pageStyle}>
-            <QueryPage />
+            <QueryPage sessionID={sessionID}/>
           </div>
           <div style={pageStyle}>
-            <NgramPage />
+            <NgramPage sessionID={sessionID}/>
           </div>
           <div style={pageStyle}>
-            <GroupNgramPage />
+            <GroupNgramPage sessionID={sessionID}/>
           </div>
         </div>
     </div>

@@ -29,8 +29,7 @@ interface DataArrayElement {
   y?: number;
 }
 
-export default function NgramPage() {
-  const [startDate, setStartDate] = useState<string>('2010-01-01');
+export default function NgramPage({sessionID}: { sessionID: string }): JSX.Element {  const [startDate, setStartDate] = useState<string>('2010-01-01');
   const [endDate, setEndDate] = useState<string>('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState<string>('');
@@ -56,7 +55,7 @@ export default function NgramPage() {
     const startDateInt: number = parseInt(startDate.replace(/-/g, ''), 10);
     const endDateInt: number = parseInt(endDate.replace(/-/g, ''), 10);
 
-    const url = `${BACKEND_IP}/ngram?sessionID=${sessionStorage.getItem('sessionID')}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
+    const url = `${BACKEND_IP}/ngram?sessionID=${sessionID}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}`;
 
     try {
       const res: Response = await fetch(url);

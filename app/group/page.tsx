@@ -27,7 +27,7 @@ interface Topic {
 }
 
 
-export default function GroupNgramPage() {
+export default function GroupNgramPage({sessionID}: { sessionID: string }): JSX.Element {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedParent, setSelectedParent] = useState('');
   const [subgroups, setSubgroups] = useState<string[]>([]);
@@ -90,7 +90,6 @@ export default function GroupNgramPage() {
     console.log('submitted allotax request');
     event.preventDefault();
     setLoading(true); // Start loading
-    const sessionID = sessionStorage.getItem('sessionID') || Math.random().toString();
     const groupsString = selectedGroups.join(',');
     const url = `${BACKEND_IP}/allotax?sessionID=${sessionID}&alpha=${alpha}&groups=${encodeURIComponent(
       groupsString
@@ -441,14 +440,14 @@ export default function GroupNgramPage() {
           .filter((d) => d !== null);
 
         // **Apply 5-point moving average to the rank data and round up**
-        const ranks = dataPoints.map((d) => d.rank);
+        const ranks = (dataPoints as any[]).map((d : any) => d.rank);
         const smoothedRanks = ranks.map((_, i, arr) => {
           const window = arr.slice(Math.max(0, i - 2), Math.min(arr.length, i + 3));
           const avg = window.reduce((sum, val) => sum + val, 0) / window.length;
           return Math.ceil(avg); // Round up the average
         });
 
-        dataPoints.forEach((d, i) => {
+        (dataPoints as any[]).forEach((d, i) => {
           d.rank = smoothedRanks[i];
         });
 
