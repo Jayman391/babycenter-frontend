@@ -29,7 +29,10 @@ interface DataArrayElement {
   y?: number;
 }
 
-export default function NgramPage({sessionID}: { sessionID: string }): JSX.Element {  const [startDate, setStartDate] = useState<string>('2010-01-01');
+import { sessionID } from '../id';
+
+export default function NgramPage(): JSX.Element { 
+  const [startDate, setStartDate] = useState<string>('2010-01-01');
   const [endDate, setEndDate] = useState<string>('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState<string>('');

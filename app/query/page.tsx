@@ -17,8 +17,10 @@ interface QueryResponseItem {
   url: string;
 }
 
+import { sessionID } from '../id';
 
-export default function QueryPage({sessionID}: { sessionID: string }): JSX.Element {  const [country, setCountry] = useState('USA');
+export default function QueryPage(): JSX.Element {  
+  const [country, setCountry] = useState('USA');
   const [startDate, setStartDate] = useState('2010-01-01');
   const [endDate, setEndDate] = useState('2024-03-01');
   const [keywords, setKeywords] = useState<string[]>([]);

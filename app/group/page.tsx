@@ -26,8 +26,9 @@ interface Topic {
   groups: string[];
 }
 
+import { sessionID } from '../id';
 
-export default function GroupNgramPage({sessionID}: { sessionID: string }): JSX.Element {
+export default function GroupNgramPage(): JSX.Element {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedParent, setSelectedParent] = useState('');
   const [subgroups, setSubgroups] = useState<string[]>([]);

@@ -8,9 +8,6 @@ import GroupNgramPage from './group/page';
 
 export default function Home() {
 
-  const sessionID = Math.random().toString().substring(7);
-  console.log('Session ID:', sessionID);
-
   const homePageStyle: CSSProperties = {
     display: 'flex',
     justifyContent: 'center',
@@ -38,13 +35,13 @@ export default function Home() {
     <div style={homePageStyle}>
         <div style={contentContainerStyle}>
           <div style={pageStyle}>
-            <QueryPage sessionID={sessionID}/>
+            <QueryPage />
           </div>
           <div style={pageStyle}>
-            <NgramPage sessionID={sessionID}/>
+            <NgramPage />
           </div>
           <div style={pageStyle}>
-            <GroupNgramPage sessionID={sessionID}/>
+            <GroupNgramPage />
           </div>
         </div>
     </div>
