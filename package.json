@@ -5,9 +5,9 @@
   "scripts": {
     "flask-dev": "FLASK_DEBUG=1 pipenv run flask --app babycenter-backend/index run -p 5328",
     "next-dev": "next dev",
-    "dev": "pnpm run next-dev",
+    "dev": "pnpm run next-dev -p 8080",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 8080",
     "lint": "next lint"
   },
   "dependencies": {

@@ -73,11 +73,9 @@ export default function QueryPage(): JSX.Element {
 
           country
         )}&startDate=${startDateInt}&endDate=${endDateInt}&keywords=${encodedKeywords}&groups=${encodedGroups}&num_comments=${numComments}&post_or_comment=${type}&num_documents=${numDocsPerType}`;
-
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         const data = await res.json();
-
         // Set default values for missing fields
         const processedResponse = data.response.map((item: QueryResponseItem) => ({
           ...item,
