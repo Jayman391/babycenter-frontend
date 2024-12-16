@@ -1,0 +1,3 @@
+[submodule "babycenter-backend"]
+	path = babycenter-backend
+	url = https://github.com/Jayman391/babycenter-backend.git

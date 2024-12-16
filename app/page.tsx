@@ -1,55 +1,49 @@
-"use client";
+'use client';
 
-import Link from 'next/link';
-import Auth from './auth';
-import { useEffect } from 'react';
+import React, { useState, useEffect, CSSProperties } from 'react';
+import QueryPage from './query/page';
+import NgramPage from './ngram/page';
+import GroupNgramPage from './group/page';
+
 
 export default function Home() {
 
- 
+  const homePageStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+    minHeight: '100vh',
+  };
+
+  const contentContainerStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column', // Stack elements horizontally
+    width: '100%',
+    gap: '20px', // Add space between stacked pages
+  };
+
+  const pageStyle: CSSProperties = {
+    backgroundColor: 'black',
+    padding: '20px',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+    borderRadius: '8px',
+    width: '100%', // Make each page take full width
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <div className="grid grid-cols-3 gap-8">
-         
-        <Link href="/query" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-ngram.jpg"
-                alt="query"
-                className="w-32 h-32"
-              />
-              <p>Custom Query</p>
-            </div>
-          </Link>
- 
-          
-          <Link href="/ngram" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-ngram.jpg"
-                alt="N-gram"
-                className="w-32 h-32"
-              />
-              <p>N-gram Visualization</p>
-            </div>
-          </Link>
-
-          <Link href="/topic" passHref>
-            <div className="flex flex-col items-center cursor-pointer">
-              <img
-                src="/placeholder-topic.jpg"
-                alt="Topic Modeling"
-                className="w-32 h-32"
-              />
-              <p>Topic Modeling</p>
-            </div>
-          </Link>
-
-       
+    <div style={homePageStyle}>
+        <div style={contentContainerStyle}>
+          <div style={pageStyle}>
+            <QueryPage />
+          </div>
+          <div style={pageStyle}>
+            <NgramPage />
+          </div>
+          <div style={pageStyle}>
+            <GroupNgramPage />
+          </div>
         </div>
-      </main>
-      
     </div>
   );
 }
